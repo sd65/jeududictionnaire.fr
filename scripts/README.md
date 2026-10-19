@@ -1,0 +1,53 @@
+# Pipeline du pack de mots rares
+
+Ces scripts tournent une seule fois (à la génération du pack), hors navigateur.
+
+```bash
+# 0) Une fois : télécharger Lexique 383 (miroir portable, 25 Mo)
+curl -sL -o data/Lexique383.tsv \
+  "https://raw.githubusercontent.com/AdrienVannson/Decorrecteur/master/Lexique383"
+
+# 1) Filtrer : lemmes NOM/ADJ/VER, 7-14 lettres,
+#    fréquence <= 0.3 par million dans les corpus livres ET films
+node scripts/build-candidates.mjs                 # -> data/candidates.json
+
+# 2) Définitions depuis le Wiktionnaire (lots de 50 titres, poliment)
+node scripts/fetch-definitions.mjs                # -> data/wordlist.json (pack final)
+node scripts/fetch-definitions.mjs --limit 200    # essai partiel
+
+# 3) Contrôle visuel
+node scripts/preview.mjs 20
+```
+
+(Équivalents npm : `npm run lexique`, `npm run defs`, `npm run preview`.)
+
+## Réglages de l'étape 1
+
+| Option | Défaut | Rôle |
+|---|---|---|
+| `--maxFreq` | `0.3` | rareté maximale par million (0.3/m = très rare) |
+| `--minLen` / `--maxLen` | `7` / `14` | fourchette de longueur lisible en jeu |
+| `--maxWords` | `30000` | garde-fou sur la taille du lot |
+| `--cats` | `NOM,ADJ,VER` | catégories grammaticales admises |
+| `--batch` | `50` | titres par requête Wiktionnaire |
+| `--sleep` | `500` ms | tempo entre lots (courtoisie API) |
+
+La reprise est gérée : `data/defs.jsonl` est incrémental, une exécution
+interrompue ne refait pas les lots déjà traités.
+
+## Résultat actuel du pack (`data/wordlist.json`)
+
+**10 548 mots rares** avec vraie définition, ~1,6 Mo
+(stade de génération suivant : 12 833 candidats, dont 706 exemples de
+flexion rejetés et 2 285 mots sans page Wiktionnaire, listés dans
+`data/no-definition.txt` pour un éventuel complément Littré).
+
+Il est embarqué tel quel dans l'application web (`/data/wordlist.json` est
+servi par le serveur statique) : chaque téléphone le charge en visitant le site.
+
+## Licences
+
+- **Fréquences** : Lexique (lexique.org), usage recherche (à vérifier pour un
+  usage commercial).
+- **Définitions** : Wiktionnaire (CC BY-SA 4.0) — le jeu embarque une page
+  « À propos » avec attribution, conformément à la licence.
