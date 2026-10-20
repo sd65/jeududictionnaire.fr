@@ -1,0 +1,13 @@
+{
+  "name": "jeududictionnaire",
+  "version": "0.1.0",
+  "description": "Jeu du dictionnaire multijoueur local — pipeline du pack de mots rares",
+  "type": "module",
+  "scripts": {
+    "lexique": "node scripts/build-candidates.mjs",
+    "defs:test": "node scripts/fetch-definitions.mjs --limit 100",
+    "defs": "node scripts/fetch-definitions.mjs",
+    "web": "node scripts/serve.mjs 8765",
+    "preview": "node scripts/preview.mjs"
+  }
+}

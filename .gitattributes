@@ -1,0 +1,5 @@
+# Text files: normalize line endings to LF (binary files auto-detected)
+* text=auto
+data/wordlist.json filter=lfs diff=lfs merge=lfs -text
+data/Lexique383.tsv filter=lfs diff=lfs merge=lfs -text
+data/defs.jsonl filter=lfs diff=lfs merge=lfs -text
