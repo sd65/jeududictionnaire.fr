@@ -3,9 +3,10 @@
 Ces scripts tournent une seule fois (à la génération du pack), hors navigateur.
 
 ```bash
-# 0) Une fois : télécharger Lexique 383 (miroir portable, 25 Mo)
+# 0) Une fois : télécharger Lexique 383 (25 Mo, licence CC BY-SA 4.0)
 curl -sL -o data/Lexique383.tsv \
-  "https://raw.githubusercontent.com/AdrienVannson/Decorrecteur/master/Lexique383"
+  "http://www.lexique.org/databases/Lexique383/Lexique383.tsv"
+# sha256 attendu : 637ba37a767a66679c48371d673ece50cbf541b49a4e40e598963d4f3fbce52b
 
 # 1) Filtrer : lemmes NOM/ADJ/VER, 7-14 lettres,
 #    fréquence <= 0.3 par million dans les corpus livres ET films
@@ -49,10 +50,10 @@ site. Voir `scripts/serve-lan.mjs` pour le serveur local.
 
 ## Licences
 
-- **Fréquences** : Lexique (lexique.org), usage recherche (à vérifier pour un
-  usage commercial).
-- **Définitions** : Wiktionnaire (CC BY-SA 4.0) — le jeu embarque une page
-  « À propos » avec attribution, conformément à la licence.
+- **Fréquences et formes** : Lexique 383 (lexique.org), **CC BY-SA 4.0**.
+- **Définitions** : Wiktionnaire français, **CC BY-SA 4.0** — le jeu embarque une page
+  « À propos » avec attribution, conformément à la licence, et le pack est une
+  adaptation dont les modifications sont indiquées (cf. [`LICENSES.md`](../LICENSES.md)).
 
 ---
 

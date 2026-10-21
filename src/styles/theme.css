@@ -692,6 +692,17 @@ textarea.input {
   }
 }
 
+/* Le bouton « Fermer » reste atteignable : la feuille « À propos » est plus
+   longue que l'écran d'un téléphone, le bouton reste donc collé en bas
+   pendant que le texte défile. */
+.overlay__panel > .row {
+  position: sticky;
+  bottom: 0;
+  margin-top: 8px;
+  padding: 12px 0 4px;
+  background-color: var(--sheet);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .overlay__panel {
     animation: none;

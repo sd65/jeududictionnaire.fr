@@ -27,8 +27,19 @@ describe('l’écran « À propos »', () => {
 
   it('attribue les sources', () => {
     expect(html).toContain('Lexique');
-    expect(html).toContain('Wiktionary');
+    expect(html).toContain('Wiktionnaire');
     expect(html).toContain('CC BY-SA 4.0');
+  });
+
+  it('indique les modifications apportées aux sources', () => {
+    expect(html).toContain('adaptation');
+    expect(html).toContain('sélectionnées');
+  });
+
+  it('donne la licence du jeu et les fichiers qui l’accompagnent', () => {
+    expect(html).toContain('/LICENSE.txt');
+    expect(html).toContain('/THIRD-PARTY-NOTICES.md');
+    expect(html).toContain('/LICENSES.txt');
   });
 
   it('cite la police et la bibliothèque de transport', () => {

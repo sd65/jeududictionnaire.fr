@@ -14,10 +14,11 @@ téléphone) ; les autres fichiers servent au debugging et à la reprise du pipe
 
 ## `Lexique383.tsv` (source, non modifié)
 Export TSV brut de Lexique 383 : une ligne par forme fléchie, colonnes
-`ortho, phon, lemme, cgram, genre, freqlemlivres, freqfilms2, …`. Licencié
-pour un **usage de recherche** (lexique.org) — à vérifier avant tout usage
-commercial. 25 Mo : ne pas versionner sur un dépôt public comme un fichier de
-jeu.
+`ortho, phon, lemme, cgram, genre, freqlemlivres, freqfilms2, …`. Sous licence
+**CC BY-SA 4.0** (lexique.org) : redistribution libre, avec attribution et
+partage à l'identique. Le fichier versionné ici est **identique à l'export
+officiel** — sha256 `637ba37a767a66679c48371d673ece50cbf541b49a4e40e598963d4f3fbce52b`,
+25 850 780 octets. 25 Mo : versionné via Git LFS.
 
 ## `candidates.json`
 Sortie de l'étape de filtrage : entête `meta` (horodatage, arguments réglés,
@@ -57,5 +58,9 @@ Le paquet de cartes du jeu est un **tirage uniforme de 100 mots** (§3 PICK de
 jouent aucun rôle. Le bouton « 🎴 Nouveau paquet » décrit ci-dessus appartenait au
 prototype : il n'existe pas dans la version cible.
 
-**Attribution obligatoire si le pack est diffusé** : Wiktionnaire CC BY-SA 4.0
-(mention + lien licence, cf. l'écran « À propos » du jeu), fréquences Lexique.
+**Attribution obligatoire si le pack est diffusé** : Lexique (CC BY-SA 4.0) et
+Wiktionnaire français (CC BY-SA 4.0) — mention + lien licence, cf. l'écran
+« À propos » du jeu. Le pack est une **adaptation** de ces sources : toute
+redistribution doit en indiquer les modifications (sélection des formes rares,
+extraction et nettoyage des définitions, reformatage) et respecter le partage à
+l'identique. Détail : [`LICENSES.md`](../LICENSES.md).

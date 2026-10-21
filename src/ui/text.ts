@@ -11,6 +11,19 @@ export const APP_TITLE = 'Jeu du Dictionnaire';
 
 export const APP_TAGLINE = 'Un mot, des définitions et du bluff';
 
+/**
+ * L'adresse du jeu en ligne, et le dépôt de ses sources (le code est publié
+ * sous la même licence que le jeu — CC BY-SA 4.0, §10).
+ */
+export const APP_URL = 'https://jeududictionnaire.fr/';
+export const SOURCE_URL = 'https://github.com/sd65/jeududictionnaire';
+
+/**
+ * L'éditeur du jeu, pour l'identification de l'éditeur du site.
+ */
+export const PUBLISHER = 'Sylvain';
+export const PUBLISHER_CONTACT = 'contact@jeududictionnaire.fr';
+
 /** Les messages de §4.16, avec leur origine (§4.2 : local, state ou seat). */
 export const MESSAGES = {
   /** local */

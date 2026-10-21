@@ -739,12 +739,22 @@ join replacing spectate (§4.8).
 
 ## 10. Licensing notes
 
-- Word list & frequencies: **Lexique** (lexique.org) — research-use licence; verify before
-  any commercial deployment.
-- Definitions: **French Wiktionary**, **CC BY-SA 4.0**. The bundle is a compliant
-  adaptation; the in-app « À propos » screen attributes the source with the licence link and
-  the share-alike notice. Any redistribution of the pack must keep this attribution.
-- Trystero: MIT.
+- **The project itself** — code, build and data are published under **Creative Commons
+  Attribution – ShareAlike 4.0** (CC BY-SA 4.0): full text in `LICENSE`, sources and
+  modifications in `LICENSES.md`. The licence text and the third-party notices are
+  **served with the app** (`/LICENSE.txt`, `/LICENSES.txt`, `/THIRD-PARTY-NOTICES.md`),
+  because the app ships the adapted word pack.
+- Word list, grammatical categories & frequencies: **Lexique 383** (lexique.org) —
+  **CC BY-SA 4.0** (the site's own licence statement; the `README-Lexique.txt` of the
+  official archive says the same). The `data/Lexique383.tsv` kept in this repository is
+  byte-identical to the official export (sha256 `637ba37a…52b`).
+- Definitions: **French Wiktionary**, **CC BY-SA 4.0** (also GFDL). The pack is a
+  compliant **adaptation**: the in-app « À propos » screen attributes the sources with the
+  licence links, states the **modifications** (selection of the rare forms, extraction and
+  cleaning of the definitions, reformatting) and carries the share-alike notice. Any
+  redistribution of the pack must keep this attribution.
+- Trystero, React and React DOM: MIT — their full notices are in
+  `public/THIRD-PARTY-NOTICES.md`, shipped with the app.
 - Font: **Patrick Hand** by Patrick Wagesreiter, **SIL Open Font License 1.1** — self-hosted at
   `public/fonts/patrick-hand.woff2`, with the licence text alongside it in
   `public/fonts/OFL.txt` (required by the OFL). The font may be bundled and redistributed with
