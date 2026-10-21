@@ -546,6 +546,9 @@ Notes:
   If it fails to load, an error message is shown and only manual entry is offered.
 - **All the user-facing text is French** and lives in one module (`ui/text.ts`), so the wording
   of §4.16 can be reviewed in one place and never drifts between screens.
+- **Debug hook:** the app exposes its current projection as `window.__jdd` (the `View` of
+  §4.2). It is what the end-to-end harness reads to know which phase a player is in, instead
+  of scraping the DOM. Read-only, no game logic behind it.
 
 The state has exactly these fields — nothing else:
 
@@ -584,6 +587,9 @@ type State = {
   rendered from a projection fixture and must not crash. No DOM, no jsdom, no snapshots.
 - **The transport is an interface** (§12.1): the in-memory implementation lets a whole game run
   inside a test file, so the end-to-end flow is covered without a network.
+- **The end-to-end harness is outside Vitest** (§12.11): it drives a real Chrome over the
+  Chrome DevTools Protocol and needs a browser, a network and the Nostr relays. It is a script
+  (`npm run e2e`), not a unit test.
 - No browser, no component-testing library. Tests run with Vitest, in Node.
 
 ### 6.8 Build and local tooling
@@ -597,10 +603,14 @@ The repo has no `package.json` yet; step **A1** of the build plan (§12) creates
 | `npm test` | Vitest, no browser (§6.7). |
 | `npm run test:watch` | Vitest in watch mode, while developing. |
 | `npm run typecheck` | `tsc --noEmit` — the types are checked without emitting. |
+| `npm run e2e` | The end-to-end harness on a real Chrome (§12.11): `--smoke` for a single page, no argument for the 3-player game. Needs the Internet: it uses the real Nostr/Trystero transport. |
 | `npm run lexique` / `npm run defs` / `npm run preview` | The existing word-pack pipeline (§6.3), unchanged. |
 
 - The `package.json` scripts are the contract of the build plan: every step of §12 ends with
-  `npm test`, `npm run typecheck` and `npm run build` all green.
+  `npm test`, `npm run typecheck` and `npm run build` all green (§12.3).
+- **Chrome for the harness:** the end-to-end scenario drives a **real Google Chrome**, launched
+  by the harness itself with a throwaway `--user-data-dir` (never the user's own profile).
+  Chrome ≥136 refuses remote debugging on the default profile anyway.
 
 - **The LAN server** is a small dependency-free Node script (`scripts/serve-lan.mjs`) that
   serves the built `dist/` over `0.0.0.0` on a chosen port and prints the machine's LAN URL
@@ -710,7 +720,7 @@ None. The only remaining work is phase 2 (wake-lock and HTTPS), see §6.8.
 
 ### 12.1 The rules of the build
 - **Small steps.** Each step below is small enough to finish in one sitting. Each one ends with
-  a green `npm test`, a green `npm run build`, a green `npm run typecheck`, and a commit.
+  a green `npm test`, a green `npm run typecheck`, a green `npm run build`, and a commit.
 - **Every step has a test.** A step that cannot be tested is split until it can. "It works on my
   phone" is the acceptance of the last phase only, never of an intermediate step.
 - **Logic away from the screen.** Everything decidable without a DOM lives in `game/` (pure) and
@@ -722,70 +732,188 @@ None. The only remaining work is phase 2 (wake-lock and HTTPS), see §6.8.
   keeps the game rules in one file, and what lets a screen be checked with a server render.
 - **The order matters.** A step builds on the previous one. No step is started before the
   previous is committed and green.
+- **How a step is checked is written in the step.** The next section lists the six checkers;
+  every row of the phases below names the one it uses.
 
-### 12.2 Phase A — the tooling (nothing playable yet)
-| # | Step | Deliverable | Test |
+### 12.2 The six ways to check something
+Every step of this plan is verified the same way: with one of these six checkers. The column
+"Cost" is what it takes, so a step is never blocked on something slow.
+
+| # | Checker | Command | What it proves | Cost |
+|---|---|---|---|---|
+| **T1** | the unit tests | `npm test` | the rules of `game/`, the protocol, the store — pure logic, in Node, no browser, no network | ~1 s |
+| **T2** | the types | `npm run typecheck` | the contracts between the modules: a wrong `State` field or a wrong message type is caught here | ~2 s |
+| **T3** | the build | `npm run build` | the app assembles, and the assets (`dist/`, the font, the word list) are where the plan says they are | ~3 s |
+| **T4** | the smoke run | `npm run e2e -- --smoke` | the app **really boots in a real Google Chrome**, the console stays clean, a screenshot is written to `dist/e2e/` | ~10 s |
+| **T5** | the whole game | `npm run e2e` | **three real players** play a whole game, over the real transport and the real Nostr relays | ~1 min, plus the relay discovery |
+| **T6** | the human eye | `npm run serve`, then a phone | the theme, the ergonomics, the real relay on a real device | manual |
+
+**T1–T3 are the floor of every step.** T4 comes with the harness (step **C7**), T5 only once the
+screens exist (step **E8**), T6 only at the end.
+
+The harness opens a **visible** Chrome: the game is watched, not just asserted. `--headless` makes
+it invisible for a quieter run.
+
+### 12.3 The loop of a step
+No step is finished until this has been run, from the repository root:
+
+```bash
+npm test && npm run typecheck && npm run build
+```
+
+and, from **C7** on:
+
+```bash
+npm run e2e -- --smoke
+```
+
+Then: one commit, whose message says what the step changed and **how it was checked**.
+`npm run test:watch` runs T1 continuously while the step is being written.
+
+### 12.4 Which checker for which change
+When in doubt, this table says what to run before committing.
+
+| What you touched | Run |
+|---|---|
+| a rule in `game/` (the reducer, the scoring, the words, the projection) | T1 + T2 |
+| a component or a screen | T1 (the server render) + T4 |
+| the transport or the protocol | T1 + T5 |
+| the store | T1 + T4 |
+| the local storage | T1 + T5 |
+| the build config, the assets, the CSS | T3 + T4 (+ T6 for the CSS) |
+| anything that could change what a player sees | T1 + T4 + T5 |
+
+### 12.5 Phase A — the tooling (nothing playable yet)
+*Environment: Node and npm only. No browser needed before C7.*
+
+| # | Step | Deliverable | How to check it |
 |---|---|---|---|
-| A1 | `package.json` | Vite + React + TS + Vitest, and the scripts of §6.8 | `npm test` green on a trivial test, `npm run typecheck` green |
-| A2 | The Vite skeleton | `index.html`, `src/main.tsx`, `src/App.tsx`, the theme CSS, the font | `npm run build` → `dist/index.html` and `dist/fonts/patrick-hand.woff2` exist; `App` renders without crashing |
-| A3 | The word list in the build | `data/wordlist.json` copied to `dist/data/` at build time (a small plugin in `vite.config.ts`) | the file is in `dist/` after a build |
-| A4 | The LAN server | `scripts/serve-lan.mjs` serves `dist/` and prints the URL to open on the phones | `curl` on `/` → 200, on `/data/wordlist.json` → 200, on `../` → 404 |
+| A1 | `package.json` | Vite + React + TS + Vitest, and the scripts of §6.8 | `npm install`, then `npm test` → 1 passing test; `npm run typecheck` → no error; `npm run build` → `dist/` created |
+| A2 | The Vite skeleton | `index.html`, `src/main.tsx`, `src/App.tsx`, the theme CSS, the font, **and the `<meta name="viewport">` tag** (without it the layout is wrong on a phone: the emulated viewport stays at 980 px) | `npm run build` → `dist/index.html` and `dist/fonts/patrick-hand.woff2` both exist; `npm run e2e -- --smoke` → Chrome opens the app, the console is clean, a screenshot lands in `dist/e2e/` |
+| A3 | The word list in the build | `data/wordlist.json` copied to `dist/data/` at build time (a small plugin in `vite.config.ts`) | `npm run build` then `test -f dist/data/wordlist.json`; `npm run serve` then `curl -sf http://127.0.0.1:8080/data/wordlist.json \| head -c 40` |
+| A4 | The LAN server | `scripts/serve-lan.mjs` serves `dist/` and prints the URL to open on the phones | `npm run serve` → `curl` 200 on `/` and on `/data/wordlist.json`, 404 on `/../etc/passwd`; then open the printed URL on a phone |
 
-### 12.3 Phase B — the pure core (`src/game/`, no React, no network)
-| # | Step | Deliverable | Test |
+### 12.6 Phase B — the pure core (`src/game/`, no React, no network)
+*Environment: T1 only. This phase is invisible from the outside, and that is deliberate: the
+rules are the part that must be exactly right, and they are the part that can be tested
+without a phone, a browser or a network.*
+
+| # | Step | Deliverable | How to check it |
 |---|---|---|---|
-| B1 | `state.ts` | the `State` type (§6.6) and `initialState()` | the initial state is the LOBBY, no seat, no Chooser, no score |
-| B2 | `reduce.ts` — LOBBY | `join`, `setOptions`, `start` | Start is refused under 3 seats and when a seat is disconnected; the seat set is frozen at start; the total round count is `tours × N` |
-| B3 | `reduce.ts` — PICK | `pick` | accepted only from the current Chooser and only in PICK; a word already played is refused |
-| B4 | `reduce.ts` — DRAFT | `def` | only from a Writer, only in DRAFT, **once** per round: a second `def` from the same seat changes nothing |
-| B5 | `reduce.ts` — DICTATE and VOTE | `valid`, `vote` | the ballot-visibility rule (vocal mode in DICTATE, both modes in VOTE); a vote for one's own fake is refused; a vote is irrevocable |
-| B6 | `reduce.ts` — REVEAL and END | `advance`, `end`, `replay` | the Chooser moves to the next seat and wraps around; the last round goes to END; « Rejouer » resets the scores and the round counter |
-| B7 | `scoring.ts` | the points of §5 and the dense ranking | the points table; the ties (1, 1, 2); the Chooser scores 0 |
-| B8 | `words.ts` | the normalisation, the shuffle, the exclusion, the deck | `Éléphant` ≡ `elephant`; the shuffle is a permutation; the deck is at most 100 cards and excludes the played words; a short pack is accepted |
-| B9 | `project.ts` | the projection (§4.2) | the whole table of §4.2, phase by phase and role by role; `canVote`, `showTexts`, `myIdx`, `waitingFor`, `myError` |
+| B1 | `src/game/state.ts` | the `State` type (§6.6) and `initialState()` | `npm test` → `src/game/state.test.ts`: the initial state is the LOBBY, no seat, no Chooser, no score |
+| B2 | `src/game/reduce.ts` — LOBBY | `join`, `setOptions`, `start` | `npm test` → `reduce.test.ts` ▸ *LOBBY*: Start is refused under 3 seats and when a seat is disconnected; the seat set is frozen at start; the total rounds = `tours × N` |
+| B3 | `src/game/reduce.ts` — PICK | `pick` | `npm test` → `reduce.test.ts` ▸ *PICK*: accepted only from the current Chooser and only in PICK; a word already played is refused |
+| B4 | `src/game/reduce.ts` — DRAFT | `def` | `npm test` → `reduce.test.ts` ▸ *DRAFT*: only from a Writer, only in DRAFT, **once** per round — a second `def` from the same seat changes nothing |
+| B5 | `src/game/reduce.ts` — DICTATE and VOTE | `valid`, `vote` | `npm test` → `reduce.test.ts` ▸ *VOTE*: the ballot-visibility rule (vocal mode in DICTATE, both modes in VOTE); a vote for one's own fake is refused; a vote is irrevocable |
+| B6 | `src/game/reduce.ts` — REVEAL and END | `advance`, `end`, `replay` | `npm test` → `reduce.test.ts` ▸ *REVEAL*: the Chooser moves to the next seat and wraps around; the last round goes to END; « Rejouer » resets the scores and the round counter |
+| B7 | `src/game/scoring.ts` | the points of §5 and the dense ranking | `npm test` → `src/game/scoring.test.ts`: the points table; the ties (1, 1, 2); the Chooser scores 0 |
+| B8 | `src/game/words.ts` | the normalisation, the shuffle, the exclusion, the deck | `npm test` → `src/game/words.test.ts`: `Éléphant` ≡ `elephant`; the shuffle is a permutation; the deck is at most 100 cards and excludes the played words; a short pack is accepted |
+| B9 | `src/game/project.ts` | the projection (§4.2) | `npm test` → `src/game/project.test.ts`: the whole table of §4.2, phase by phase and role by role; `canVote`, `showTexts`, `myIdx`, `waitingFor`, `myError` |
 
-### 12.4 Phase C — the transport and the shell
-| # | Step | Deliverable | Test |
+### 12.7 Phase C — the transport and the shell
+*Environment: T1 for the logic, T4 for the shell.*
+
+| # | Step | Deliverable | How to check it |
 |---|---|---|---|
-| C1 | `net/transport.ts` | the interface, plus an in-memory implementation | a host and two guests exchange messages inside one process |
-| C2 | `net/protocol.ts` | the message types of §6.5 (`hello`, `pick`, `def`, `vote`, `valid`, `state`, `union`) | each message encodes and decodes; an unknown `k` is ignored |
-| C3 | The integration test | a whole game, from the lobby to the ranking | the game completes; the scores match §5; the union is broadcast on each join and never per round |
-| C4 | `net/trystero.ts` | the real transport (the same interface) | the C1–C3 suite passes against the in-memory transport; the real one is checked by hand on two phones (§12.8) |
-| C5 | `store/store.ts` | the external store and `useSyncExternalStore` | `subscribe` / `getSnapshot`; one change notifies the subscribers once |
-| C6 | The app shell | the screen is chosen from the phase; the admin bar for the host | every screen renders without crashing (server render, no browser) |
+| C1 | `src/net/transport.ts` | the interface, plus an in-memory implementation | `npm test` → `src/net/transport.test.ts`: a host and two guests exchange messages inside one process |
+| C2 | `src/net/protocol.ts` | the message types of §6.5 (`hello`, `pick`, `def`, `vote`, `valid`, `state`, `union`) | `npm test` → `src/net/protocol.test.ts`: each message encodes and decodes; an unknown `k` is ignored |
+| C3 | The integration test | a whole game, from the lobby to the ranking | `npm test` → `src/net/game.test.ts`: the game completes; the scores match §5; the union is broadcast on each join and never per round |
+| C4 | `src/net/trystero.ts` | the real transport, behind the same interface | `npm test` is still green (the C1–C3 suite runs against the in-memory transport); **T6**: two phones, `npm run serve` |
+| C5 | `src/store/store.ts` | the external store and `useSyncExternalStore` | `npm test` → `src/store/store.test.ts`: `subscribe` / `getSnapshot`; one change notifies the subscribers once |
+| C6 | The app shell | the screen is chosen from the phase; the admin bar for the host | `npm test` (the server render of every screen); `npm run e2e -- --smoke` → the app boots in a real Chrome, the console is clean |
+| C7 | `scripts/e2e/chrome.mjs` | **the CDP driver**: launch a real Chrome, open isolated contexts, evaluate, click by label, capture the console, screenshot, emulate a phone | `npm run e2e -- --smoke`: the driver launches a real Google Chrome, opens a page, evaluates a value in it and asserts it |
 
-### 12.5 Phase D — the screens
-| # | Step | Deliverable | Test |
+### 12.8 Phase D — the screens
+*Environment: T1 (the server render) + T4 (the real Chrome).*
+
+| # | Step | Deliverable | How to check it |
 |---|---|---|---|
-| D1 | Home and Lobby | create / join / resume, the pseudo, the options, « À propos » | the server render; the pseudo rules live in `game/`, not in the component |
-| D2 | Pick | the deck of 100 cards, the manual entry | the navigation and the deck are in `game/`; the server render |
-| D3 | Draft | the fake field, the counters, the lock after sending | the server render |
-| D4 | Dictate and Vote | the dictation card, the ballot, the own option greyed out | the server render, with a projection fixture |
-| D5 | Reveal and End | the round points, the ranking | the server render |
+| D1 | Home and Lobby | create / join / resume, the pseudo, the options, « À propos » | `npm test` (the server render); `npm run e2e -- --smoke` (the screen appears in a real Chrome); the pseudo rules live in `game/`, not in the component |
+| D2 | Pick | the deck of 100 cards, the manual entry | `npm test` (the navigation and the deck are in `game/`); `npm run e2e -- --smoke` |
+| D3 | Draft | the fake field, the counters, the lock after sending | `npm test` (the server render); `npm run e2e -- --smoke` |
+| D4 | Dictate and Vote | the dictation card, the ballot, the own option greyed out | `npm test` (the server render, with a projection fixture); `npm run e2e -- --smoke` |
+| D5 | Reveal and End | the round points, the ranking | `npm test` (the server render); `npm run e2e -- --smoke` |
+| D6 | The debug hook | the app exposes `window.__jdd` (the current `View`, §6.6) | `npm run e2e -- --smoke`: the harness reads a non-empty phase from the hook |
 
-### 12.6 Phase E — the real world
-| # | Step | Deliverable | Test |
+### 12.9 Phase E — the real world
+*Environment: T1 for the simulated cases, T5 for the real ones, T6 for the look.*
+
+| # | Step | Deliverable | How to check it |
 |---|---|---|---|
-| E1 | The disconnection | the peer-leave handling, the blocking, the reconnection | the integration test: a guest leaves → the game is blocked → they come back → it resumes |
-| E2 | The host reload | the `jdd.host` snapshot and the restore | the integration test: the host reloads → the guests re-send `hello` → the game resumes where it was |
-| E3 | The history | `jdd.hist`, the union, « Effacer mon historique » | the union is broadcast on each join; the excluded set is the local history ∪ the union |
-| E4 | The local storage | `jdd.draft`, `jdd.name`, `jdd.room` | the round-trip through a fake localStorage |
-| E5 | The « À propos » screen | the attribution and the licences (§10) | the server render |
-| E6 | The theme | the paper, the ruled lines, the red and blue pens, the motion | a look on a real phone (the only step of this phase without an automated test) |
-| E7 | The wake lock | the best-effort request on every device | it never breaks the app when the context is not secure |
+| E1 | The disconnection | the peer-leave handling, the blocking, the reconnection | `npm test` → `game.test.ts` ▸ *disconnection*: a guest leaves → the game is blocked → they come back → it resumes; then `npm run e2e` |
+| E2 | The host reload | the `jdd.host` snapshot and the restore | `npm test` → `game.test.ts` ▸ *host reload*: the host reloads → the guests re-send `hello` → the game resumes where it was; then `npm run e2e` |
+| E3 | The history | `jdd.hist`, the union, « Effacer mon historique » | `npm test` → `game.test.ts` ▸ *history*: the union is broadcast on each join; the excluded set is the local history ∪ the union |
+| E4 | The local storage | `jdd.draft`, `jdd.name`, `jdd.room` | `npm test` → `src/store/storage.test.ts`: the round-trip through a fake localStorage |
+| E5 | The « À propos » screen | the attribution and the licences (§10) | `npm test` (the server render); `npm run e2e -- --smoke` |
+| E6 | The theme | the paper, the ruled lines, the red and blue pens, the motion | **T6**: `npm run serve`, look at it on a phone — the only step of this phase without an automated check |
+| E7 | The wake lock | the best-effort request on every device | `npm test`: it never throws when the context is not secure; **T6** on a phone |
+| E8 | The 3-player scenario | `scripts/e2e/three-players.mjs`: 3 players in 3 isolated Chrome contexts play a whole game, on the real transport | `npm run e2e`: the game reaches END on the 3 devices, the scores match §5, no console error — **this is T5** |
 
-### 12.7 Phase F — the acceptance
-| # | Step | Deliverable | Test |
+### 12.10 Phase F — the acceptance
+*Environment: T6 only. These are the steps a human does, on real phones.*
+
+| # | Step | Deliverable | How to check it |
 |---|---|---|---|
-| F1 | A whole game on 3 phones | the acceptance of the local build | by hand, following the game loop of §3 |
-| F2 | The edge cases | the refresh mid-round, the sleeping phone, the host leaving | by hand |
+| F1 | A whole game on 3 phones | the acceptance of the local build | **T6**: `npm run build && npm run serve`, open the printed URL on 3 phones, play the loop of §3 |
+| F2 | The edge cases | the refresh mid-round, the sleeping phone, the host leaving | **T6**: trigger each of them on a real phone |
 
-### 12.8 The order, and what comes first
+### 12.11 The end-to-end harness
+The unit tests cover the rules; the harness covers **the app as it is really used** — a real
+browser, the real transport, the real relays, and three devices at once.
+
+**It drives a real Google Chrome**, over the Chrome DevTools Protocol, from a small Node
+script (`scripts/e2e/chrome.mjs`). The protocol is built into Chrome and Node has a WebSocket
+client built in: no dependency, no Playwright, no Puppeteer, and never Chromium.
+
+| Piece | Role |
+|---|---|
+| `scripts/e2e/chrome.mjs` | the driver: launch Chrome, create isolated contexts, open pages, evaluate, click, read the console, screenshot, emulate a phone |
+| `scripts/e2e/three-players.mjs` | the scenario: 3 players, one whole game, the assertions |
+
+**Two modes, same result:**
+
+| Mode | What it does | When |
+|---|---|---|
+| `npm run e2e -- --smoke` | one page: the app boots, the console is clean, a screenshot is written to `dist/e2e/` | after every step from C7 on |
+| `npm run e2e` | three players, one whole game, the assertions | from E8 on, and before any release |
+
+**Three players = three isolated contexts.** `Target.createBrowserContext` gives each player
+its own storage partition, so each has its own `jdd.name`, `jdd.hist`, `jdd.host` and
+`jdd.room` — exactly what a phone would have. The three pages run on the **same origin**; the
+isolation comes from the context, not from the URL. Each context is opened in its **own
+visible window** (`Target.createTarget` with `newWindow: true`), so the game can be watched
+while it runs.
+
+**The harness never scrapes the DOM.** It reads the phase from `window.__jdd` (§6.6) and
+clicks buttons **by their French label** — the labels of §4.16, which live in one module
+(`ui/text.ts`). So the harness also checks that the wording of §4.16 is the wording on screen.
+
+**The pseudo is injected before the app boots**
+(`Page.addScriptToEvaluateOnNewDocument`), so each player starts with its own name without
+touching the Lobby UI.
+
+**Chrome is launched by the harness**, with a throwaway `--user-data-dir` — never the user's
+own profile — and with `--disable-features=WebRtcHideLocalIpsWithMdns`, because the three
+contexts sit on the same machine and would otherwise hide their local IPs behind the same
+mDNS name, which breaks the ICE pairing between them.
+
+**The scenario needs the Internet**: the three players meet through the Nostr relays, exactly
+like on a real table. It is therefore the automated version of **F1**, and it is expected to
+be slower than a unit test (relay discovery).
+
+| It checks | It does not check |
+|---|---|
+| that a whole game can be played by 3 devices | the rules in isolation — that is Vitest's job |
+| that the transport, the state and the screens agree | the visual quality of the theme |
+| that the console stays clean on every device | the behaviour of a phone that falls asleep |
+
+### 12.12 The order, and what comes first
 The steps are strictly sequential. The first three are the ones to do right away, and they are
 the smallest possible vertical slice — a green test, a green build, nothing else:
 
 1. **A1** — the `package.json` and the dependencies, with one trivial test.
-2. **A2** — the Vite skeleton, the theme CSS, the font, and the build that produces `dist/`.
+2. **A2** — the Vite skeleton, the theme CSS, the font, the viewport tag, and the build that
+   produces `dist/`.
 3. **A3** — the word list copied into `dist/`, and the LAN server that serves it.
 
 After A1–A4 the phones can open the app (an empty page). Everything until B9 is invisible from
@@ -793,8 +921,9 @@ the outside, and that is deliberate: the game rules are the part that must be ex
 they are the part that can be tested without a phone, a browser or a network.
 
 The build is not finished until **F1** passes: the app is only a game when a whole party can
-play it on real phones, over a real Wi-Fi network, with the real relay.
-
+play it on real phones, over a real Wi-Fi network, with the real relay. From **E8** on, the
+automated harness (`npm run e2e`) catches the regressions that would otherwise need three
+phones and a free evening.
 ---
 
 ## 13. Decision log
@@ -814,3 +943,4 @@ Decisions taken during the plan review, recorded so the reasoning is not lost.
 | 9 | **One state, one projection.** The host broadcasts the whole state; there is no wire-level filtering and no `reject` message. What a device may draw is decided by a single pure function `project(state, me)`, run by the host and the guests alike. A join failure is read locally from the state; an action failure is recorded as a per-seat error and comes back with the next broadcast. | §4.2, §6.5, §6.6 |
 | 10 | **The ballot is stored as a list of authors.** `(seatPseudo \| 'real')[]` yields the texts, the author of each option, the index of the real definition and the index of each Writer's own definition — so the own-vote rule is exact on both sides, with no text matching and no second "dictation" payload. | §3 VOTE, §4.3 |
 | 11 | **One exclusion set.** The words played in the current game are already in each device's local history (the DRAFT broadcast adds them), so the excluded set is simply the local `jdd.hist` ∪ the union — no separate "played in this game" list to maintain. | §3 PICK, §4.4 |
+| 12 | **The end-to-end harness drives a real Google Chrome**, over the Chrome DevTools Protocol, with no Playwright and no Puppeteer. Three players = three isolated browser contexts (their own storage partition, their own visible window). The harness reads the phase from a debug hook and clicks by the French labels, so it never scrapes the DOM. | §6.6, §6.7, §12.11 |
