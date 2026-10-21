@@ -170,6 +170,29 @@ export function writeDraft(room: string, text: string): void {
 /* ------------------------------------------------------------------ commun */
 
 /**
+ * La partie sauvegardée, si elle est bien celle de cette salle.
+ *
+ * Quatre conditions : **la salle**, le pseudo de l'hôte, l'heure, et le
+ * fait qu'il y ait des joueurs.
+ *
+ * La salle d'abord, et c'est essential : une salle **neuve** ne doit surtout
+ * pas hériter de la partie précédente — sinon son classement apparaît dans
+ * une partie où personne n'a jamais joué (§4.11, §4.14).
+ */
+export function savedGameFor(
+  stored: HostSnapshot | null,
+  code: string,
+  name: string,
+): State | null {
+  if (stored === null) return null;
+  if (stored.code !== code) return null;
+  if (!isFresh(stored.at)) return null;
+  if (stored.state.seats.length === 0) return null;
+  if (stored.state.seats[0] !== name) return null;
+  return stored.state;
+}
+
+/**
  * Une salle stockée est-elle encore vivante ? (§4.14 : une heure)
  *
  * « Dernière activité » : la dernière action appliquée, changements de phase

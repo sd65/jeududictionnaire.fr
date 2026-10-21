@@ -19,6 +19,32 @@ import { threePlayers } from './three-players.mjs';
 const args = process.argv.slice(2);
 const headless = args.includes('--headless');
 
+/**
+ * L'état d'une partie terminée, comme l'hôte le sauvegarde.
+ *
+ * Il sert à vérifier qu'une salle neuve n'hérite pas du classement de la
+ * partie précédente : c'est le bug du « classement fantôme ». Le premier
+ * siège est le pseudo de cet appareil — c'est ce qui faisait passer la
+ * sauvegarde pour la bonne.
+ */
+const FINISHED_GAME = {
+  phase: 'END',
+  seats: ['Testeur', 'SD2', 'SD3'],
+  connected: { Testeur: true, SD2: true, SD3: true },
+  errors: {},
+  chooser: null,
+  round: 6,
+  tours: 2,
+  vocal: true,
+  word: '',
+  category: '',
+  realDef: '',
+  fakes: {},
+  ballot: [],
+  votes: {},
+  scores: { Testeur: 3 },
+};
+
 /** Le smoke test : l'app démarre-t-elle vraiment, dans un vrai Chrome ? */
 async function smoke() {
   buildIfNeeded();
@@ -57,6 +83,13 @@ async function smoke() {
     const phase = await page.evaluate('window.__jdd.phase');
     if (!phase) throw new Error('la phase lue dans le crochet est vide');
 
+    // L'appareil garde une partie terminée d'une **autre** salle.
+    await page.evaluate(
+      `localStorage.setItem("jdd.host", ${JSON.stringify(
+        JSON.stringify({ state: FINISHED_GAME, code: 'WXYZ', at: Date.now() }),
+      )})`,
+    );
+
     // L'accueil : un pseudo, et la création d'une salle.
     await page.fill('Pseudo', 'Testeur');
     await page.clickLabel('Créer une salle');
@@ -66,6 +99,14 @@ async function smoke() {
     const seatedPhase = await page.evaluate('window.__jdd.phase');
     if (seatedPhase !== 'LOBBY') {
       throw new Error(`phase inattendue après la création : « ${seatedPhase} »`);
+    }
+    // La salle neuve est neuve : aucun classement de la partie d'avant.
+    const seats = await page.evaluate('window.__jdd.seats');
+    if (seats.length !== 1) {
+      throw new Error(`la salle neuve a hérité des joueurs d'avant : ${seats.join(', ')}`);
+    }
+    if (await page.evaluate('!!document.querySelector(".ranking")')) {
+      throw new Error('la salle neuve affiche le classement de la partie d’avant');
     }
     const code = await page.text('.room__code');
     if (!/^[A-Z]{4}$/.test(code)) {

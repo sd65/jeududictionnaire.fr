@@ -8,7 +8,7 @@
 import { roomFromUrl, roomToUrl } from '../game/room';
 import { createSession, type Session } from '../net/session';
 import { createTrysteroTransport } from '../net/trystero';
-import { readHistory, readHost, writeHistory, writeHost, writeRoom } from '../store/storage';
+import { readHistory, readHost, savedGameFor, writeHistory, writeHost, writeRoom } from '../store/storage';
 
 export type OpenRoom = {
   /** La session : l'état, le transport, les actions. */
@@ -64,9 +64,10 @@ export function forgetRoomInUrl(): void {
 /**
  * L'hôte ouvre une salle.
  *
- * Si une partie est sauvegardée sur cet appareil et qu'elle appartient à ce
- * pseudo, elle est reprise : le joueur retrouve la table, les scores et la
- * manche en cours (§4.14).
+ * Si une partie est sauvegardée sur cet appareil et qu'elle est **celle de
+ * cette salle** et de ce pseudo, elle est reprise : le joueur retrouve la
+ * table, les scores et la manche en cours (§4.14). Une salle neuve, elle,
+ * repart de zéro — jamais du classement de la partie d'avant.
  */
 export function openHostRoom(code: string, name: string): OpenRoom {
   const session = createSession({
@@ -81,16 +82,14 @@ export function openHostRoom(code: string, name: string): OpenRoom {
     onState: (state) => writeHost(state, code),
   });
 
-  const stored = readHost();
-  const restorable =
-    stored !== null && stored.state.seats.length > 0 && stored.state.seats[0] === name;
-  if (restorable && stored) {
-    session.store.set(stored.state);
+  const saved = savedGameFor(readHost(), code, name);
+  if (saved !== null) {
+    session.store.set(saved);
   }
 
   rememberRoomInUrl(code);
   session.start();
-  return { session, code, restored: restorable };
+  return { session, code, restored: saved !== null };
 }
 
 /** Un invité ouvre une salle. */

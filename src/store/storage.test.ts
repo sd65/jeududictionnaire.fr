@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { initialState } from '../game/state';
+import { gameFixture } from '../test/fixtures';
 import {
   clearHistory,
   clearHost,
@@ -11,12 +12,14 @@ import {
   readHost,
   readName,
   readRoom,
+  savedGameFor,
   ROOM_TTL,
   writeDraft,
   writeHistory,
   writeHost,
   writeName,
   writeRoom,
+  type HostSnapshot,
 } from './storage';
 
 /** Un localStorage de mentira, avec la même interface que le vrai. */
@@ -182,5 +185,46 @@ describe('le texte non envoyé', () => {
     writeDraft('ABCD', 'Une fausse définition');
     writeDraft('ABCD', '');
     expect(readDraft('ABCD')).toBe('');
+  });
+});
+
+describe('la partie sauvegardée', () => {
+  const state = gameFixture('END');
+
+  it('est rendue pour sa propre salle', () => {
+    const stored: HostSnapshot = { state, code: 'IBLA', at: Date.now() };
+    expect(savedGameFor(stored, 'IBLA', 'Alice')).toBe(state);
+  });
+
+  it('n’est jamais rendue pour une autre salle', () => {
+    // Une salle neuve ne doit pas hériter du classement de la partie
+    // d'avant : c'est le bug du classement qui apparaissait dans une salle
+    // où personne n'avait jamais joué.
+    const stored: HostSnapshot = { state, code: 'IBLA', at: Date.now() };
+    expect(savedGameFor(stored, 'WXYZ', 'Alice')).toBeNull();
+  });
+
+  it('exige le même hôte', () => {
+    const stored: HostSnapshot = { state, code: 'IBLA', at: Date.now() };
+    expect(savedGameFor(stored, 'IBLA', 'Bob')).toBeNull();
+  });
+
+  it('exige une partie fraîche', () => {
+    const stored: HostSnapshot = { state, code: 'IBLA', at: Date.now() - ROOM_TTL - 1000 };
+    expect(savedGameFor(stored, 'IBLA', 'Alice')).toBeNull();
+  });
+
+  it('ignore une partie sans joueurs', () => {
+    const empty = gameFixture('LOBBY');
+    const stored: HostSnapshot = {
+      state: { ...empty, seats: [] },
+      code: 'IBLA',
+      at: Date.now(),
+    };
+    expect(savedGameFor(stored, 'IBLA', 'Alice')).toBeNull();
+  });
+
+  it('ne rend rien sans sauvegarde', () => {
+    expect(savedGameFor(null, 'IBLA', 'Alice')).toBeNull();
   });
 });

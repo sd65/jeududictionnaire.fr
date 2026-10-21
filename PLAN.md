@@ -341,6 +341,9 @@ which plain `http://<LAN-IP>` is not — so it is **phase 2** work (§6.8).
   Last activity means
   the last applied action, phase changes included. A stored room inactive for more than 1 hour
   is discarded at launch, and the home screen is shown without any offer to resume it.
+- A stored game belongs to **its** room: it is restored only for the same room code, the same
+  host, and the same hour. A **new** room therefore starts from scratch — the ranking of the
+  previous game must never appear in a room where nobody has ever played (§4.11).
 - Every player has « Accueil » in a burger menu, always reachable but not prominent. Leaving to the
   home screen disconnects the device: its seat is disconnected and blocks the game until the
   player returns by pseudo (§4.12). It is a way to unstick oneself, not a quit. Leaving a game in
@@ -1034,3 +1037,5 @@ Decisions taken during the plan review, recorded so the reasoning is not lost.
 | 37 | **The home screen does not offer a second way to create a room.** The plan had « Nouvelle salle » next to « Reprendre la salle XXXX »; but « Créer une salle » is right there, and two buttons that do the same thing only confuse. Resuming is the offer; creating stays where it was. | §4.14 |
 | 38 | **The buttons are drawn, not painted.** No button has a solid blue background any more: the main action is a box with a firm blue line (a thicker one), a secondary action is a written word, and the voted option is a pale wash. The app is a sheet of paper — a block of colour is a web app, not a notebook. The hierarchy is carried by the *shape* of the button, not by a fill, and the touch targets stay at 44 px. | §9 |
 | 39 | **The offer to resume a game sits above everything else**, in a dashed box drawn in another ink, and there is only one offer: the most recent of the host's own game and the last room heard from. It is a different kind of action from creating or joining, and it says so before the player touches anything. | §4.14, §9 |
+| 40 | **The saved game belongs to its room.** `jdd.host` carries the room code (§6.4), and the restore checks it: same room, same host, same hour. The check on the pseudo alone was not enough — the same device, with the same pseudo, creating a *new* room inherited the previous game's state, and its final ranking showed up in a brand-new room where nobody had ever played. The condition is a pure function (`savedGameFor`), covered by the tests and by the harness. | §4.11, §4.14, §6.4 |
+| 40 | **The saved game belongs to its room.** `jdd.host` carries the room code (§6.4), and the restore checks it: same room, same host, same hour. The check on the pseudo alone was not enough — the same device, with the same pseudo, creating a *new* room inherited the previous game's state, and its final ranking showed up in a brand-new room where nobody had ever played. The condition is a pure function (`savedGameFor`), covered by the tests and by the harness. | §4.11, §4.14, §6.4 |
