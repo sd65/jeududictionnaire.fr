@@ -49,8 +49,13 @@ articles sans section de définition.
 - `w` : le mot (7–14 lettres, rare ≤ 0,3/million dans livres ET films) ;
 - `p` : la catégorie grammaticale formatée pour l'affichage (`adj.`, `n.m.`, `v.`…) ;
 - `d` : la vraie définition (Wiktionnaire, **CC BY-SA 4.0**) ;
-- `fL` / `fF` : fréquence par million dans les corpus livres / films —
-  tri du paquet de cartes, bouton « 🎴 Nouveau paquet » (les plus rares d'abord).
+- `fL` / `fF` : fréquence par million dans les corpus livres / films — utilisées
+  par le **pipeline** (filtrage de rareté), **pas par le jeu**.
+
+Le paquet de cartes du jeu est un **tirage uniforme de 100 mots** (§3 PICK de
+[`PLAN.md`](../PLAN.md)), parcouru circulairement, sans reshuffle ; `fL` / `fF` n'y
+jouent aucun rôle. Le bouton « 🎴 Nouveau paquet » décrit ci-dessus appartenait au
+prototype : il n'existe pas dans la version cible.
 
 **Attribution obligatoire si le pack est diffusé** : Wiktionnaire CC BY-SA 4.0
 (mention + lien licence, cf. l'écran « À propos » du jeu), fréquences Lexique.
