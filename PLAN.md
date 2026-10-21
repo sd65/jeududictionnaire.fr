@@ -659,15 +659,18 @@ The threat model is “friends at a table”, not adversarial security:
 
 ## 8. Status
 
-**Phase A is done** (§12.5): the tooling exists — `package.json` (Vite + React + TS +
-Vitest), the Vite skeleton, the theme CSS, the font, the word list copied into `dist/`, and
-the LAN server. The app boots, but it is still an empty shell: the game itself is not
-written.
+**Phases A and B are done** (§12.5, §12.6). The tooling exists — `package.json` (Vite +
+React + TS + Vitest), the Vite skeleton, the theme CSS, the font, the word list copied into
+`dist/`, the LAN server — and the **pure core of the game** is written and covered by 120
+tests: the state, the reducer (the seven-phase machine), the scoring, the words, and the
+projection.
+
+**The app still shows an empty shell**: no screen, no transport, no store. The next step is
+**C1** (§12.7) — the transport interface, then the protocol, then the app shell.
 
 **Nothing else is built yet.** This plan describes the whole target application: the
 seven-phase game loop (§6.2) and everything around it. The word pack and its pipeline
-(`scripts/`, `data/`) already exist and are ready (§6.3). The execution order is **§12**,
-and the next step is **B1** (§12.6).
+(`scripts/`, `data/`) already exist and are ready (§6.3). The execution order is **§12**.
 
 **Features that are new in this plan** (i.e. not yet implemented anywhere): the seven-phase
 machine with a single code path for both modes (§6.2), the one-state / one-projection model
@@ -815,6 +818,12 @@ without a phone, a browser or a network.*
 | B8 | `src/game/words.ts` | the normalisation, the shuffle, the exclusion, the deck | `npm test` → `src/game/words.test.ts`: `Éléphant` ≡ `elephant`; the shuffle is a permutation; the deck is at most 100 cards and excludes the played words; a short pack is accepted |
 | B9 | `src/game/project.ts` | the projection (§4.2) | `npm test` → `src/game/project.test.ts`: the whole table of §4.2, phase by phase and role by role; `canVote`, `showTexts`, `myIdx`, `waitingFor`, `myError` |
 
+Beyond the plan's file list, phase B also produced: the **admin bar** as a pure derivation
+(`adminBar(state)`, next to the projection — its rules are game rules, so they are tested with
+the rest of the core), the **`hello` reclaim rule** and the **`hostBack`** action for the host's
+reload, and the **injected dependencies** of the reducer (`excluded`, `shuffle`) — the reasons
+are in the decision log (§13, decisions 13 to 17).
+
 ### 12.7 Phase C — the transport and the shell
 *Environment: T1 for the logic, T4 for the shell.*
 
@@ -949,3 +958,8 @@ Decisions taken during the plan review, recorded so the reasoning is not lost.
 | 10 | **The ballot is stored as a list of authors.** `(seatPseudo \| 'real')[]` yields the texts, the author of each option, the index of the real definition and the index of each Writer's own definition — so the own-vote rule is exact on both sides, with no text matching and no second "dictation" payload. | §3 VOTE, §4.3 |
 | 11 | **One exclusion set.** The words played in the current game are already in each device's local history (the DRAFT broadcast adds them), so the excluded set is simply the local `jdd.hist` ∪ the union — no separate "played in this game" list to maintain. | §3 PICK, §4.4 |
 | 12 | **The end-to-end harness drives a real Google Chrome**, over the Chrome DevTools Protocol, with no Playwright and no Puppeteer. Three players = three isolated browser contexts (their own storage partition, their own visible window). The harness reads the phase from a debug hook and clicks by the French labels, so it never scrapes the DOM. | §6.6, §6.7, §12.11 |
+| 13 | **The reducer takes two injected dependencies**, not state fields: `excluded` (the words that may not be played again) and `shuffle` (the one that freezes the 1…N ballot order). The excluded set is *not* in the `State` — the state has exactly the fields of §6.6, and the union lives in the host's memory (§4.4) — and the shuffle must be injectable for the ballot order to be testable at all. | §3 PICK, §4.3, §4.4, §6.6 |
+| 14 | **A `hello` reclaims a seat only if that seat is disconnected; a connected seat means a duplicate and is refused silently.** The plan says both things in two places (§3, §6.5: "refuse the duplicate"; §4.9: "a hello that arrives before the host has noticed the old peer leaving is still a reclaim"). The race of §4.9 is settled at the transport level instead: the guest re-sends `hello` until it sees itself connected, which the protocol already prescribes ("every guest re-sends `hello` when a peer joins"). Always reclaiming would let a newcomer take over a *connected* seat — two devices drawing the same seat — which breaks the table; a lost reconnect is recoverable, that is not. A `hostBack` action covers the host's own reload: on its return, every other seat starts disconnected until its owner's `hello` arrives (§6.5). | §3 LOBBY, §4.9, §4.11, §6.5 |
+| 15 | **The vote index is 0-based inside the state** (the index in the ballot array, which is what `myIdx` and `realIdx` are), and **1-based on the wire** (§6.5: `{ idx }` is 1…N). The conversion happens once, in the protocol layer. | §4.2, §4.3, §6.5 |
+| 16 | **`canVote` keeps the plan's exact expression** — `phase === 'VOTE' \|\| (phase === 'DICTATE' && vocal)` — and is restricted, on top of it, to a seated Writer: the Chooser never votes (§3 VOTE) and a device that is not at the table never votes. A test asserts the expression for every Writer, in every phase, in both modes. | §3 VOTE, §4.2 |
+| 17 | **The host's admin bar is a separate pure derivation** (`adminBar(state)`), living next to the projection. Its rules — when « Démarrer » is enabled, when « Lecture » waits for every fake, when « Révéler » is forced — are game rules, so they belong to the pure core and are tested with it; the screen only draws them. | §4.10, §4.15 |
