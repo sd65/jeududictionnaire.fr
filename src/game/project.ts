@@ -58,6 +58,14 @@ export type View = {
   realDef: string;
   /** Les pseudos qui ont envoyé leur fausse définition (sans les textes). */
   submitted: string[];
+  /**
+   * Les fausses déjà envoyées, avec leur auteur.
+   *
+   * Le **Chooser** les voit, en direct, pendant la DRAFT : c'est lui qui les
+   * lit à voix haute (§4.15). Les rédacteurs ne voient jamais les textes
+   * des autres — ni en DRAFT, ni plus tard.
+   */
+  drafts: { author: string; text: string }[];
   /** Le nombre de votes exprimés (agrégat, jamais le détail). */
   voters: number;
   /** Le nombre de votes par option — au Révél seulement. */
@@ -129,6 +137,11 @@ export function project(state: State, me: string | null): View {
   }
 
   const submitted = state.seats.filter((seat) => seat in state.fakes);
+  // Les fausses envoyées : le Chooser les voit en direct, les autres jamais.
+  const showDrafts = phase === 'DRAFT' && isChooser;
+  const drafts = showDrafts
+    ? submitted.map((author) => ({ author, text: state.fakes[author] ?? '' }))
+    : [];
   const points = roundPoints(state.ballot, state.votes);
   const standing = rank(state.scores, seats);
 
@@ -152,6 +165,7 @@ export function project(state: State, me: string | null): View {
       category: '',
       realDef: '',
       submitted: [],
+      drafts: [],
       voters: 0,
       votes: [],
       roundPoints: {},
@@ -188,6 +202,7 @@ export function project(state: State, me: string | null): View {
     category: showWord ? state.category : '',
     realDef: dictationCard ? state.realDef : '',
     submitted: showSubmitted ? submitted : [],
+    drafts,
     voters: showVoters ? Object.keys(state.votes).length : 0,
     votes: showVotes ? voteCounts : [],
     roundPoints: showVotes ? points : {},

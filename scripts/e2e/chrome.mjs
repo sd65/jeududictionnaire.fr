@@ -113,6 +113,19 @@ export class Page {
   }
 
   /**
+   * Un bouton portant ce libellé est-il là ?
+   *
+   * Comme le clic, la recherche se fait par le texte que le joueur voit :
+   * le harnais ne gratte jamais le DOM (§12.11).
+   */
+  async hasLabel(label) {
+    return this.evaluate((text) => {
+      const nodes = [...document.querySelectorAll('button, a, [role="button"]')];
+      return nodes.some((node) => (node.textContent ?? '').trim() === text);
+    }, label);
+  }
+
+  /**
    * Attend qu'un bouton soit là — et actif — puis le presse.
    *
    * Les boutons de l'hôte sont désactivés tant que la partie n'est pas prête

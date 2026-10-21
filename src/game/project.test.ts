@@ -41,7 +41,7 @@ describe('la projection selon la phase', () => {
     expect(view.category).toBe('n.m.');
   });
 
-  it('en DRAFT, personne ne voit les fausses définitions', () => {
+  it('en DRAFT, le bulletin reste vide pour tout le monde', () => {
     const state = build('DRAFT_SUBMITTED');
     for (const who of PLAYERS) {
       const view = project(state, who);
@@ -55,6 +55,26 @@ describe('la projection selon la phase', () => {
   it('en DRAFT, on voit qui a envoyé sa fausse, pas ce qu’il a écrit', () => {
     const view = project(build('DRAFT_SUBMITTED'), 'Bob');
     expect(view.submitted).toEqual(WRITERS);
+  });
+
+  it('en DRAFT, le Chooser voit les fausses, au fur et à mesure', () => {
+    const state = build('DRAFT_SUBMITTED');
+    const view = project(state, HOST);
+    expect(view.drafts).toEqual([
+      { author: 'Bob', text: 'Fausse de Bob' },
+      { author: 'Chloé', text: 'Fausse de Chloé' },
+    ]);
+  });
+
+  it('en DRAFT, les rédacteurs ne voient jamais les fausses des autres', () => {
+    const state = build('DRAFT_SUBMITTED');
+    for (const writer of WRITERS) {
+      expect(project(state, writer).drafts).toEqual([]);
+    }
+  });
+
+  it('les fausses du Chooser disparaissent à la fin de la DRAFT', () => {
+    expect(project(build('DICTATE'), HOST).drafts).toEqual([]);
   });
 
   it('en DICTATE vocal, le joueur voit les numéros mais pas les textes', () => {

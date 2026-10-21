@@ -38,6 +38,11 @@ export const MESSAGES = {
     'On dirait que cela prend plus de temps que d’habitude. Vérifie le code, le Wi-Fi et la connexion Internet — ou lance un nouveau salon.',
   /** local */
   wordListFailed: 'Impossible de charger la liste de mots. Saisie manuelle uniquement.',
+  /** local */
+  leaveConfirm:
+    'Quitter la partie ? Ton siège sera libéré, et la partie attendra ton retour.',
+  /** local */
+  endConfirm: 'Terminer la partie ? Les points de la manche en cours ne compteront pas.',
 } as const;
 
 /** Les libellés de boutons de l'hôte, de §4.15. */
@@ -64,13 +69,15 @@ export const LABELS = {
   comeback: (code: string) => `Revenir dans la salle ${code}`,
   about: 'À propos',
   cancel: 'Annuler',
-  newRoom: 'Nouvelle salle',
+  yes: 'Oui',
   createNewRoom: 'Créer un nouveau salon',
   waitingHost: 'En attente de l’hôte…',
   clearHistory: 'Effacer mon historique de mots',
   close: 'Fermer',
   home: 'Accueil',
   backHome: "Retour à l'accueil",
+  /** Le menu du coin, toujours présent mais discret (§4.14). */
+  menu: 'Menu',
 
   /* Le salon (§3 LOBBY) */
   table: 'La table',
@@ -101,6 +108,8 @@ export const LABELS = {
   submitted: (done: number, total: number) =>
     `${done} / ${total} ont envoyé la leur.`,
   waitingOthers: 'En attendant les autres…',
+  /** Le titre de la liste des fausses, pour le Chooser (§4.15). */
+  draftsTitle: 'Les fausses définition, au fur et à mesure',
 
   /* La dictée (§3 DICTATE) */
   dictateTitle: 'La dictée',

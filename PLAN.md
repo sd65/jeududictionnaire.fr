@@ -80,7 +80,8 @@ they are constraints, not implementation details.
   new game (§4.8).
 - Lobby has **« Effacer mon historique de mots »**: clears this device's `jdd.hist` so its
   played words become eligible again (§4.4).
-- Lobby has a **small « À propos » button** (mandatory, §10).
+- The **burger menu** of the header holds « Accueil » and « À propos » (mandatory, §10); it is
+  always there, on every screen, and it never takes the place.
 
 ### PICK (no timer, 100% host-manual advance)
 - Only the Chooser acts. They get a **swipeable deck of 100 cards** (word, category `p`,
@@ -208,9 +209,11 @@ player screen obeys the same column (the host's admin bar is separate):
 | "voted" counts (aggregate only) | — | — | — | ✓ | — | ✓ | ✓ | — |
 | real index, votes detail, round points and total score | — | — | — | — | — | — | — | ✓ |
 
-The Chooser's screen adds one thing: from DICTATE on, a **dictation card** — the numbered stable
-order with a REAL badge — drawn on the Chooser's screen only. During DICTATE (normal mode), a
-guest's phone *displays* no playable information.
+The Chooser's screen adds two things. From DICTATE on, a **dictation card** — the numbered stable
+order with a REAL badge — drawn on the Chooser's screen only. During DRAFT, the **fakes as they
+arrive**: the Chooser reads the definitions aloud, so it sees each one as it is sent, with its
+author. The Writers still never see each other's texts, in any phase. During DICTATE (normal
+mode), a guest's phone *displays* no playable information.
 
 **Transport reality (accepted, §7):** no targeted sends (§6.5), so every device physically
 receives the whole state — the fake texts, the real definition, the authors, the REAL badge. The
@@ -330,25 +333,32 @@ which plain `http://<LAN-IP>` is not — so it is **phase 2** work (§6.8).
 ### 4.14 Home screen and « Accueil »
 - The home screen offers « Créer une salle » and « Rejoindre » (§3).
 - If a stored room (`jdd.host`) exists and its **last activity** was less than **1 hour** ago, the
-  home screen also offers « Reprendre la salle XXXX » and « Nouvelle salle ». Last activity means
+  home screen also offers « Reprendre la salle XXXX ». There is no second button for it: « Créer
+  une salle » already starts a fresh room, and two buttons that do the same thing only confuse.
+  Last activity means
   the last applied action, phase changes included. A stored room inactive for more than 1 hour
   is discarded at launch, and the home screen is shown without any offer to resume it.
 - Every player has « Accueil » in a burger menu, always reachable but not prominent. Leaving to the
   home screen disconnects the device: its seat is disconnected and blocks the game until the
-  player returns by pseudo (§4.12). It is a way to unstick oneself, not a quit.
+  player returns by pseudo (§4.12). It is a way to unstick oneself, not a quit. Leaving a game in
+  progress **asks for confirmation**, and the URL then returns to the root — otherwise a reload
+  would drop the device back into the game it has just left (§4.9).
 - A guest's device keeps the code of the last room it received a state from (`jdd.room`). If
   that room was seen less than 1 hour ago, the home screen offers « Revenir dans la salle XXXX ».
   Otherwise it is discarded.
 
 ### 4.15 Screens by phase
 The host's admin buttons appear on the host's device, next to its own player screen.
-« Terminer la partie » is available to the host in every phase (§4.12).
+« Terminer la partie » is available to the host in every phase (§4.12). It is **not a game
+command** but the way out of a stuck game: it is therefore **small and discreet**, and it **asks
+for confirmation** — cutting the round in progress loses its points. The same goes for « Accueil »
+in the burger menu: leaving a game in progress asks first (§4.14).
 
 | Phase | Host buttons | Chooser | Writer | Other players |
 |---|---|---|---|---|
 | LOBBY | « Démarrer » (enabled at ≥ 3 seated **and** all connected), options (« Mode vocal seul », « Nombre de tours ») | seat list | seat list | seat list, options read-only |
 | PICK | none | swipeable deck, « ✓ Choisir ce mot », manual entry | « Le Chooser choisit un mot » | same waiting text |
-| DRAFT | « Lecture » (enabled when every Writer has submitted) | list of who has submitted | 500-character field, « Envoyer », locked after sending | word shown |
+| DRAFT | « Lecture » (enabled when every Writer has submitted) | list of who has submitted, **and the fakes as they arrive** | 500-character field, « Envoyer », locked after sending | word shown |
 | DICTATE | none (the Chooser validates) | dictation card, « Passer au vote — tout le monde a entendu » | normal: waiting screen; vocal: numbered vote buttons | same as Writer |
 | VOTE | « Révéler » (enabled when every Writer has voted; force reveal always available) | dictation card stays, may repeat a definition | normal: numbered definitions and vote; vocal: numbered vote buttons | same as Writer |
 | REVEAL | « Manche suivante » (last round: « Voir le classement ») | round points, total scores | round points, total scores | same |
@@ -712,7 +722,9 @@ join replacing spectate (§4.8).
   - Error states: red pen.
   - Sheet: cream `#fbf9f2`, ruled lines `#c3e2f1`, card paper `#fffdf6`, card border `#d9e3ec`.
 - **Responsive:** mobile portrait is the primary target. On larger screens, a single centred
-  column of max 480 px, with the sheet visible around it. Touch targets at least **44 px**.
+  column of max 480 px, with the sheet visible around it. The column is at least as tall as the
+  screen, so the magenta margin runs down to the bottom of the screen on a computer too.
+  Touch targets at least **44 px**.
 - **Motion:** sober only: short fades or slides between phases, no looping or decorative animation.
 - **Modes:** light only, no dark mode.
 - **Language:** French only.
@@ -729,7 +741,8 @@ join replacing spectate (§4.8).
   `public/fonts/patrick-hand.woff2`, with the licence text alongside it in
   `public/fonts/OFL.txt` (required by the OFL). The font may be bundled and redistributed with
   the app.
-- The « À propos » entry point is **mandatory and visible on the Lobby** (small button).
+- The « À propos » entry point is **mandatory and always visible**: the burger menu in the
+  header, on every screen. It opens a sheet that comes up from the bottom, over the game.
 
 ---
 
@@ -1008,3 +1021,9 @@ Decisions taken during the plan review, recorded so the reasoning is not lost.
 | 29 | **The harness counts only the application's errors.** A relay that falls over is logged by the browser as a network error; the application already knows, retries, and says nothing. The check keeps the exceptions and the `console.error` of the app, and ignores the browser's own network log. | §12.2, §12.11 |
 | 30 | **The wake lock is a request, never a requirement.** It is asked on every device — the phones are face-down on the table (§4.13) — and the refusal is silent: without a secure context (the usual `http://<ip-du-LAN>`), there is simply no lock. The request never throws, and its test says so. | §4.13, §6.8 |
 | 31 | **The 3-player scenario checks §5 exactly.** The harness knows the votes it cast, and the reveal gives the count of each option and its author. It verifies: a vote is worth exactly one point, a fake that received a vote gives a point to its author, a vote for the real definition gives a point to the voter, and the Chooser scores nothing. The final ranking is the sum of the rounds' points. | §5, §12.9, §12.11 |
+| 32 | **The join panel puts « Annuler » first and the join button on the right.** The button the player pressed (« Rejoindre ») stays where it was: the panel does not move the action under their finger. | §4.14 |
+| 33 | **The Chooser sees the fakes live during DRAFT.** It is the one who reads the definitions aloud, so it needs them as they arrive, with their author. This is a change to §4.2 (the fake texts used to be drawn nowhere before DICTATE); the Writers still never see each other's texts, and the Chooser never votes. | §4.2, §4.15 |
+| 34 | **The two actions that break something ask for confirmation**: « Terminer la partie » (the host, which cuts the round in progress) and « Accueil » (the player, which leaves the table). Both are inline confirmations, not a native dialog, and both can be cancelled. | §4.12, §4.14, §4.15 |
+| 35 | **The burger menu is the entry point of « Accueil » and « À propos »**, on every screen, and it never takes the place. « À propos » opens a sheet that comes up from the bottom, over the game — no margin, no gap, and the title well below the app's title. Quitting returns the URL to the root. | §4.14, §10 |
+| 36 | **The app column is at least as tall as the screen** (`min-height: 100dvh`), so the magenta margin runs down to the bottom of the screen on a computer as well as on a phone. | §9 |
+| 37 | **The home screen does not offer a second way to create a room.** The plan had « Nouvelle salle » next to « Reprendre la salle XXXX »; but « Créer une salle » is right there, and two buttons that do the same thing only confuse. Resuming is the offer; creating stays where it was. | §4.14 |

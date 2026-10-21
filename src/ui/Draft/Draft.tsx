@@ -12,7 +12,8 @@ const MAX_LENGTH = 500;
  * Le mot est diffusé, et chacun écrit **une** fausse définition. Une fois
  * envoyée, elle est verrouillée : le réducteur l refuse en double (§3 DRAFT).
  *
- * Le Chooser, lui, ne voit que **qui** a envoyé — jamais les textes (§4.2).
+ * Le Chooser, lui, voit les fausses **au fur et à mesure qu'elles
+ * arrivent** : c'est lui qui les lit à voix haute (§4.15).
  */
 export function Draft({ view, dispatch, me, room }: ScreenProps) {
   // Le texte tapé mais pas encore envoyé est gardé sur l'appareil, par
@@ -77,6 +78,25 @@ export function Draft({ view, dispatch, me, room }: ScreenProps) {
             </li>
           ))}
         </ul>
+      ) : null}
+
+      {/*
+        Le Chooser lit les définitions à voix haute : il les voit donc
+        au fur et à mesure qu'elles arrivent (§4.15). Les rédacteurs, eux,
+        ne voient jamais les textes des autres.
+      */}
+      {view.drafts.length > 0 ? (
+        <>
+          <h3 className="drafts__title">{LABELS.draftsTitle}</h3>
+          <ul className="drafts">
+            {view.drafts.map((draft) => (
+              <li key={draft.author} className="drafts__item">
+                <span className="seats__name">{draft.author}</span>
+                <p className="drafts__text">{draft.text}</p>
+              </li>
+            ))}
+          </ul>
+        </>
       ) : null}
     </section>
   );

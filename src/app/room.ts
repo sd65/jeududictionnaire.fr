@@ -46,6 +46,22 @@ export function rememberRoomInUrl(code: string): void {
 }
 
 /**
+ * L'URL revient à la racine : on a quitté la salle.
+ *
+ * Le code de salle dans l'URL, c'est ce qui fait revenir à la partie au
+ * rechargement (§4.9). Puisqu'on quitte, on l'enlève — sinon un
+ * rechargement renverrait l'appareil dans la partie qu'on vient de quitter.
+ */
+export function forgetRoomInUrl(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.history.replaceState(null, '', '/');
+  } catch {
+    // L'URL ne bougera pas : tant pis.
+  }
+}
+
+/**
  * L'hôte ouvre une salle.
  *
  * Si une partie est sauvegardée sur cet appareil et qu'elle appartient à ce

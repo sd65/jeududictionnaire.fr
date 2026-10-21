@@ -81,6 +81,47 @@ async function smoke() {
       throw new Error(`pack de mots indisponible : ${pack} mots`);
     }
 
+    // Le menu du coin (§4.14) : il est là, il ouvre sur « Accueil » et
+    // « À propos », et quitter une partie demande confirmation.
+    const openMenu = async () => {
+      if (!(await page.hasLabel('Accueil'))) await page.clickLabel('☰');
+    };
+
+    await openMenu();
+    if (!(await page.hasLabel('Accueil'))) {
+      throw new Error('le menu ne montre pas « Accueil »');
+    }
+    if (!(await page.hasLabel('À propos'))) {
+      throw new Error('le menu ne montre pas « À propos »');
+    }
+
+    // « À propos » : la feuille passe par-dessus le jeu, et elle attribue les
+    // sources avec leurs licences (§10).
+    await page.clickLabel('À propos');
+    await page.waitFor('!!document.querySelector(".overlay__panel")', {
+      label: 'la feuille « À propos »',
+    });
+    const about = await page.text('.overlay__panel');
+    if (!about.includes('Lexique') || !about.includes('CC BY-SA 4.0')) {
+      throw new Error('« À propos » n’attribue pas les sources');
+    }
+    await page.clickLabel('Fermer');
+    await page.waitFor('!document.querySelector(".overlay__panel")', {
+      label: 'la fermeture de « À propos »',
+    });
+
+    // Quitter la partie demande confirmation.
+    await openMenu();
+    await page.clickLabel('Accueil');
+    await page.waitFor('document.body.textContent.includes("Quitter la partie")', {
+      label: 'la confirmation de sortie',
+    });
+    // On annule : on reste à la table.
+    await page.clickLabel('Annuler');
+    await page.waitFor('window.__jdd && window.__jdd.isSeated === true', {
+      label: 'le retour à la table',
+    });
+
     if (page.consoleErrors.length > 0) {
       throw new Error(`console sale :\n  - ${page.consoleErrors.join('\n  - ')}`);
     }
@@ -92,11 +133,25 @@ async function smoke() {
     await new Promise((resolve) => setTimeout(resolve, 400));
     const file = await page.screenshot(join(shots, 'smoke.png'));
 
+    // Quitter pour de bon : l'appareil revient à l'accueil, et l'URL au
+    // racine — sinon un rechargement renverrait dans la partie quittée.
+    await openMenu();
+    await page.clickLabel('Accueil');
+    await page.clickLabel('Oui');
+    await page.waitFor('!!document.querySelector(".screen--home")', {
+      label: 'le retour à l’accueil',
+    });
+    const finalUrl = await page.evaluate('window.location.pathname + window.location.search');
+    if (finalUrl !== '/') {
+      throw new Error(`l’URL n’est pas revenue à la racine : « ${finalUrl} »`);
+    }
+
     console.log('✔ l’application démarre dans un vrai Google Chrome');
     console.log(`  · titre      : ${title}`);
     console.log(`  · viewport   : ${width} px`);
     console.log(`  · phase      : ${phase} → ${seatedPhase}`);
     console.log(`  · salle      : ${code}`);
+    console.log(`  · sortie     : l’accueil, URL « ${finalUrl} »`);
     console.log(`  · console    : propre`);
     console.log(`  · capture    : ${file}`);
   } finally {

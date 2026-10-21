@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useDebugHook } from './app/debug';
 import { useWakeLock } from './app/wakelock';
-import { openGuestRoom, openHostRoom, roomInUrl } from './app/room';
+import { forgetRoomInUrl, openGuestRoom, openHostRoom, roomInUrl } from './app/room';
 import { setSession, useSession } from './app/session';
 import { absenceReason, project } from './game/project';
 import { newRoomCode } from './game/room';
@@ -12,6 +12,7 @@ import { useStore } from './store/useStore';
 import { About } from './ui/About/About';
 import { AdminBar } from './ui/AdminBar';
 import { Home } from './ui/Home/Home';
+import { Menu } from './ui/Menu/Menu';
 import { Screen } from './ui/Screen';
 import { APP_TITLE, LABELS, MESSAGES } from './ui/text';
 
@@ -100,8 +101,13 @@ export function App() {
   const timedOut = useJoinTimeout(session !== null && absence === 'waiting');
 
   const goHome = () => {
+    // Quitter la salle libère l'appareil : le siège est déconnecté, et la
+    // partie attend le retour de ce joueur (§4.12, §4.14).
     session?.leave();
     setSession(null);
+    // Et l'URL revient à la racine : un rechargement ne doit pas renvoyer
+    // l'appareil dans la partie qu'on vient de quitter.
+    forgetRoomInUrl();
   };
 
   /** « Effacer mon historique de mots » : cet appareil seul (§4.4). */
@@ -117,45 +123,49 @@ export function App() {
   };
 
   return (
-    <main className="app">
-      <header className="app__header">
-        <h1 className="app__title">{APP_TITLE}</h1>
-        <button type="button" className="btn btn--link" onClick={() => setAbout(true)}>
-          {LABELS.about}
-        </button>
-      </header>
-
-      {session ? (
-        <>
-          {timedOut ? (
-            <>
-              <p className="error">{MESSAGES.joinTimeout}</p>
-              <button type="button" className="btn btn--primary" onClick={failover}>
-                {LABELS.createNewRoom}
-              </button>
-            </>
-          ) : null}
-          {view.isHost ? (
-            <p className="room">
-              {LABELS.room} <span className="room__code">{session.room}</span>
-            </p>
-          ) : null}
-          <Screen
-            view={view}
-            dispatch={dispatch}
-            me={session.name}
-            excluded={excluded}
-            room={session.room}
+    <>
+      <main className="app">
+        <header className="app__header">
+          <h1 className="app__title">{APP_TITLE}</h1>
+          <Menu
+            inRoom={session !== null}
             onHome={goHome}
-            onClearHistory={clearHistory}
+            onAbout={() => setAbout(true)}
           />
-          {view.isHost ? <AdminBar state={state} dispatch={dispatch} /> : null}
-        </>
-      ) : (
-        <Home onOpen={(room) => setSession(room.session)} />
-      )}
+        </header>
+
+        {session ? (
+          <>
+            {timedOut ? (
+              <>
+                <p className="error">{MESSAGES.joinTimeout}</p>
+                <button type="button" className="btn btn--primary" onClick={failover}>
+                  {LABELS.createNewRoom}
+                </button>
+              </>
+            ) : null}
+            {view.isHost ? (
+              <p className="room">
+                {LABELS.room} <span className="room__code">{session.room}</span>
+              </p>
+            ) : null}
+            <Screen
+              view={view}
+              dispatch={dispatch}
+              me={session.name}
+              excluded={excluded}
+              room={session.room}
+              onHome={goHome}
+              onClearHistory={clearHistory}
+            />
+            {view.isHost ? <AdminBar state={state} dispatch={dispatch} /> : null}
+          </>
+        ) : (
+          <Home onOpen={(room) => setSession(room.session)} />
+        )}
+      </main>
 
       {about ? <About onClose={() => setAbout(false)} /> : null}
-    </main>
+    </>
   );
 }

@@ -28,9 +28,9 @@ export function Pick({ view, dispatch, me, excluded }: ScreenProps) {
   const card = cards[index];
 
   if (!view.isChooser) {
+    // Les autres attendent : un seul mot, pas de titre à moitié vide (§4.15).
     return (
       <section className="screen screen--pick">
-        <h2>{LABELS.pickTitle}</h2>
         <p className="muted">{LABELS.waitingPick}</p>
       </section>
     );

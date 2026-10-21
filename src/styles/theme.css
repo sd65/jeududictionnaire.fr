@@ -66,6 +66,7 @@ body {
 .app {
   position: relative;
   max-width: 480px;
+  min-height: 100dvh;
   margin: 0 auto;
   padding: 20px 28px 64px 20px;
 }
@@ -191,6 +192,28 @@ p {
   border-color: var(--red);
 }
 
+/* Un bouton discret : il est là, mais il ne crie pas. */
+.btn--quiet {
+  color: var(--ink-soft);
+  background: none;
+  border-color: var(--card-border);
+}
+
+.btn--quiet:hover {
+  color: var(--blue);
+  border-color: var(--blue);
+}
+
+/*
+ * Un petit bouton : la police est petite, la cible tactile ne l'est pas
+ * (44 px, §9) — on ne tape jamais dans le vide.
+ */
+.btn--small {
+  min-height: 44px;
+  padding: 4px 12px;
+  font-size: 0.95rem;
+}
+
 .input {
   width: 100%;
   min-height: 44px;
@@ -312,6 +335,11 @@ textarea.input {
 .row--between {
   align-items: center;
   justify-content: space-between;
+}
+
+/* Les actions à droite : le bouton principal garde sa place. */
+.row--end {
+  justify-content: flex-end;
 }
 
 /* La table : la liste des sièges. */
@@ -537,7 +565,147 @@ textarea.input {
   border-top: 1px dashed var(--rule);
 }
 
+/* La confirmation de « Terminer la partie » : elle occupe sa propre ligne. */
+.admin__confirm {
+  display: flex;
+  flex-wrap: wrap;
+  flex-basis: 100%;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin__question {
+  flex: 1 1 100%;
+  font-size: 0.95rem;
+  color: var(--ink-soft);
+}
+
 /* Le message « en attente de… », au-dessus de l'écran. */
 .waiting {
   color: var(--red);
+}
+
+/* ---------------------------------------------------------------------------
+   Le menu du coin (§4.14) : « Accueil » et « À propos ».
+   --------------------------------------------------------------------------- */
+
+.menu {
+  position: relative;
+}
+
+.menu__button {
+  padding: 2px 12px;
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.menu__panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  min-width: 210px;
+  padding: 6px;
+  background: var(--card);
+  background-image: var(--grain);
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+}
+
+.menu__item {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 1rem;
+  text-align: left;
+  color: var(--blue);
+  background: none;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.menu__item:hover {
+  background: var(--sheet);
+}
+
+.menu__question {
+  margin: 8px 12px 0;
+  font-size: 0.95rem;
+  color: var(--ink-soft);
+}
+
+.menu__panel .row {
+  margin: 6px 6px 2px;
+}
+
+/* ---------------------------------------------------------------------------
+   « À propos » : une feuille qui remonte du bas, par-dessus le jeu.
+   --------------------------------------------------------------------------- */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgb(46 61 84 / 45%);
+}
+
+.overlay__panel {
+  width: 100%;
+  max-width: 480px;
+  max-height: 88dvh;
+  overflow-y: auto;
+  padding: 20px 24px 28px;
+  background-color: var(--sheet);
+  background-image: var(--grain);
+  border-radius: 14px 14px 0 0;
+  box-shadow: 0 -4px 18px rgb(46 61 84 / 22%);
+  animation: jdd-slide-up 0.2s ease-out;
+}
+
+@keyframes jdd-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay__panel {
+    animation: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Les fausses définition, vues par le Chooser en direct (§4.15).
+   --------------------------------------------------------------------------- */
+
+.drafts {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+}
+
+.drafts__item {
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--rule);
+}
+
+.drafts__text {
+  margin: 0;
+  line-height: 1.4;
+}
+
+.drafts__title {
+  margin-top: 16px;
 }

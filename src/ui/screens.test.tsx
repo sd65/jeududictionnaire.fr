@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { project, type View } from '../game/project';
 import { gameFixture, HOST, PLAYERS, type FixtureStop } from '../test/fixtures';
 import { AdminBar } from './AdminBar';
+import { Menu } from './Menu/Menu';
 import { Screen } from './Screen';
 import type { ScreenProps } from './types';
 
@@ -97,6 +98,11 @@ describe('le choix du mot', () => {
     expect(chooser).toContain('Choisis un mot');
     expect(other).toContain('Le Chooser choisit un mot');
   });
+
+  it('ne montre pas le titre « Choisis un mot » aux autres', () => {
+    const html = renderToString(<Screen {...propsOf(gameFixture('PICK'), 'Bob')} />);
+    expect(html).not.toContain('Choisis un mot');
+  });
 });
 
 describe('la fausse définition', () => {
@@ -112,10 +118,16 @@ describe('la fausse définition', () => {
     expect(html).not.toContain('Envoyer');
   });
 
-  it('ne montre aucun texte au Chooser', () => {
+  it('montre les fausses au Chooser, au fur et à mesure', () => {
     const html = renderToString(<Screen {...propsOf(gameFixture('DRAFT_SUBMITTED'), HOST)} />);
-    expect(html).not.toContain('Fausse de Bob');
+    expect(html).toContain('Fausse de Bob');
+    expect(html).toContain('Fausse de Chloé');
     expect(html).toContain('2 / 2');
+  });
+
+  it('ne montre aucun texte de faux aux rédacteurs', () => {
+    const html = renderToString(<Screen {...propsOf(gameFixture('DRAFT_SUBMITTED'), 'Bob')} />);
+    expect(html).not.toContain('Fausse de Chloé');
   });
 });
 
@@ -184,6 +196,27 @@ describe('la barre d’administration', () => {
     const html = renderToString(<AdminBar state={state} dispatch={() => {}} />);
     expect(html).toContain('disabled');
     expect(state.seats[0]).toBe(HOST);
+  });
+
+  it(' garde « Terminer la partie » discret, et ne demande rien tout seul', () => {
+    const state = gameFixture('LOBBY');
+    const html = renderToString(<AdminBar state={state} dispatch={() => {}} />);
+    expect(html).toContain('Terminer la partie');
+    // Le bouton discret, pas la confirmation.
+    expect(html).toContain('btn--quiet');
+    expect(html).not.toContain('Les points de la manche en cours');
+  });
+
+  it('ne propose pas « Terminer la partie » à la fin', () => {
+    const html = renderToString(<AdminBar state={gameFixture('END')} dispatch={() => {}} />);
+    expect(html).not.toContain('Terminer la partie');
+  });
+});
+
+describe('le menu du coin', () => {
+  it('est toujours là', () => {
+    const html = renderToString(<Menu inRoom={false} onHome={() => {}} onAbout={() => {}} />);
+    expect(html).toContain('aria-label="Menu"');
   });
 });
 

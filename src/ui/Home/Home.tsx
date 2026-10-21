@@ -109,12 +109,16 @@ export function Home({ onOpen }: HomeProps) {
               onChange={(event) => setCode(event.target.value.toUpperCase())}
             />
           </label>
-          <div className="row">
-            <button type="button" className="btn btn--primary" onClick={join}>
-              {LABELS.joinRoom}
-            </button>
+          {/*
+            « Annuler » d'abord, et l'action principale à droite : le bouton
+            pressé reste à la place où l'on l'avait trouvé (§4.14).
+          */}
+          <div className="row row--end">
             <button type="button" className="btn" onClick={() => setJoining(false)}>
               {LABELS.cancel}
+            </button>
+            <button type="button" className="btn btn--primary" onClick={join}>
+              {LABELS.joinRoom}
             </button>
           </div>
         </>
@@ -133,9 +137,6 @@ export function Home({ onOpen }: HomeProps) {
         <div className="offers">
           <button type="button" className="btn" onClick={resume}>
             {LABELS.resume(host.code)}
-          </button>
-          <button type="button" className="btn" onClick={create}>
-            {LABELS.newRoom}
           </button>
         </div>
       ) : null}
