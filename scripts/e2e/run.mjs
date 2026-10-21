@@ -92,17 +92,53 @@ async function smoke() {
     if (width !== 390) {
       throw new Error(`viewport incorrect : ${width} px au lieu de 390 (balise viewport manquante ?)`);
     }
+
+    // Le crochet de débogage expose la projection (§6.6) : c'est par là que
+    // le harnais lit la phase, sans gratter le DOM (§12.11).
+    await page.waitFor('!!window.__jdd', { label: 'le crochet de débogage' });
+    const phase = await page.evaluate('window.__jdd.phase');
+    if (!phase) throw new Error('la phase lue dans le crochet est vide');
+
+    // L'accueil : un pseudo, et la création d'une salle.
+    await page.fill('Pseudo', 'Testeur');
+    await page.clickLabel('Créer une salle');
+    await page.waitFor('window.__jdd && window.__jdd.isSeated === true', {
+      label: 'le salon',
+    });
+    const seatedPhase = await page.evaluate('window.__jdd.phase');
+    if (seatedPhase !== 'LOBBY') {
+      throw new Error(`phase inattendue après la création : « ${seatedPhase} »`);
+    }
+    const code = await page.text('.room__code');
+    if (!/^[A-Z]{4}$/.test(code)) {
+      throw new Error(`code de salle inattendu : « ${code} »`);
+    }
+
+    // Le pack de mots est servi depuis la même origine que l'application
+    // (§6.6) : sans lui, le Chooser n'a qu'à saisir les mots à la main.
+    const pack = await page.evaluate(
+      'fetch("/data/wordlist.json").then((r) => r.json()).then((p) => p.words.length)',
+    );
+    if (!pack || pack < 1000) {
+      throw new Error(`pack de mots indisponible : ${pack} mots`);
+    }
+
     if (page.consoleErrors.length > 0) {
       throw new Error(`console sale :\n  - ${page.consoleErrors.join('\n  - ')}`);
     }
 
     const shots = join(ROOT, 'dist', 'e2e');
     await mkdir(shots, { recursive: true });
+    // On laisse le fondu d'arrivée se terminer : la capture doit montrer
+    // l'écran posé, pas à mi-chemin.
+    await new Promise((resolve) => setTimeout(resolve, 400));
     const file = await page.screenshot(join(shots, 'smoke.png'));
 
     console.log('✔ l’application démarre dans un vrai Google Chrome');
     console.log(`  · titre      : ${title}`);
     console.log(`  · viewport   : ${width} px`);
+    console.log(`  · phase      : ${phase} → ${seatedPhase}`);
+    console.log(`  · salle      : ${code}`);
     console.log(`  · console    : propre`);
     console.log(`  · capture    : ${file}`);
   } finally {

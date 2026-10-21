@@ -463,7 +463,7 @@ should be reviewed with `scripts/preview.mjs` before release (not a spec blocker
 |---|---|---|
 | `jdd.hist` | localStorage | words played on this device (FIFO cap 3000; sent in `hello`; the word of each round is appended when it is broadcast in DRAFT; clearable from Lobby) |
 | `jdd.name` | localStorage | default pseudonym |
-| `jdd.host` | localStorage | host's game state backup, written after each action and restored on reload; cleared when a new room is created or when inactive for more than 1 hour (§4.14, §6.6) |
+| `jdd.host` | localStorage | host's game state backup (`{ state, code, at }`), written after each action and restored on reload; cleared when a new room is created or when inactive for more than 1 hour (§4.14, §6.6) |
 | `jdd.draft` | localStorage | unsent text of the current fake or definition, keyed by room; cleared on send (§4.9) |
 | `jdd.room` | localStorage | `{ code, seenAt }` for the last room this device received a state from; `seenAt` is refreshed on each state broadcast (§4.14) |
 
@@ -659,17 +659,25 @@ The threat model is “friends at a table”, not adversarial security:
 
 ## 8. Status
 
-**Phases A, B and C are done** (§12.5, §12.6, §12.7). The tooling exists — `package.json`
+**Phases A, B, C and D are done** (§12.5, §12.6, §12.7, §12.8). The tooling exists — `package.json`
 (Vite + React + TS + Vitest), the Vite skeleton, the theme CSS, the font, the word list
 copied into `dist/`, the LAN server. The **pure core of the game** is written and covered by
 tests: the state, the reducer (the seven-phase machine), the scoring, the words, the
 projection. The **transport** exists too, in two implementations — one in memory (a whole
 game runs inside a test file) and one real (Trystero over Nostr) — along with the protocol,
-the session, the store, the app shell and the end-to-end harness.
+the session, the store and the end-to-end harness.
 
-**The screens are still shells.** They show the right data but do not yet take the player
-anywhere: there is no « Créer une salle », no way to join, no deck, no field to type a fake
-definition in. The next step is **D1** (§12.8).
+**The game is playable.** The screens are all there: the home screen (« Créer une salle »,
+« Rejoindre », the resume offers), the Lobby (the table, the options, the room code), the
+word picker (a deck of a hundred cards, browsed circularly, plus the manual entry), the
+fake definition, the dictation, the ballot, the reveal and the final ranking. The debug hook
+(`window.__jdd`) is exposed, and the harness drives the real Chrome through it: it fills the
+pseudo, creates a room, and checks that the Lobby comes up with a four-letter code.
+
+**What is not built yet** is the real world around the game: the disconnection handling, the
+host's reload, the history and its union, the remaining storage keys, the « À propos »
+licences, the wake lock, and the three-player scenario on the real transport. The next step
+is **E1** (§12.9).
 
 **Nothing else is built yet.** This plan describes the whole target application: the
 seven-phase game loop (§6.2) and everything around it. The word pack and its pipeline
@@ -859,6 +867,13 @@ tests). The reasons for the choices are in the decision log (§13, decisions 18 
 | D5 | Reveal and End | the round points, the ranking | `npm test` (the server render); `npm run e2e -- --smoke` |
 | D6 | The debug hook | the app exposes `window.__jdd` (the current `View`, §6.6) | `npm run e2e -- --smoke`: the harness reads a non-empty phase from the hook |
 
+Beyond the plan's file list, phase D also produced: `src/game/room.ts` (the room code: drawn,
+validated, read from the URL), `src/store/storage.ts` (the device's keys), `src/app/room.ts`
+(opening a room), `src/app/wordlist.ts` (the pack, loaded in the background),
+`src/app/debug.ts` (the hook), `src/ui/Ballot/Ballot.tsx` (the ballot, shared by DICTATE and
+VOTE) and `src/ui/About/About.tsx`. The reasons for the choices are in the decision log
+(§13, decisions 22 to 27).
+
 ### 12.9 Phase E — the real world
 *Environment: T1 for the simulated cases, T5 for the real ones, T6 for the look.*
 
@@ -977,3 +992,9 @@ Decisions taken during the plan review, recorded so the reasoning is not lost.
 | 19 | **A guest applies the host's disconnection locally.** When the host's peer leaves, nobody broadcasts anything any more — so the guest marks the host's seat disconnected in its own copy of the state, and the projection stays the single place that decides what is drawn. When the host comes back it broadcasts the state again, which replaces the guest's copy wholesale. | §4.11, §4.12, §4.2 |
 | 20 | **Trystero 0.26 has no "room ready" event any more.** The transport therefore fires it as soon as the room exists, and the guest re-sends its `hello` on every peer join (§4.9) — the application never depends on the exact moment the relays answer. | §4.9, §6.5 |
 | 21 | **The harness launches Chrome on a random free port** (`--remote-debugging-port=0`, the port is read from `DevToolsActivePort`), with a throwaway `--user-data-dir` and `--disable-features=WebRtcHideLocalIpsWithMdns` — without that last flag, the three contexts on one machine hide their local IPs behind the same mDNS name and ICE pairing between them fails. | §12.11 |
+| 22 | **The room code is shown, and stored with the host's snapshot.** « Créer une salle » draws a fresh four-letter code (§3 LOBBY) and shows it in the Lobby, so the host can share it; a guest joins with the code or with the `?room=CODE` link. The code is part of `jdd.host` (`{ state, code, at }`) because the state itself has no room field (§6.6) — and « Reprendre la salle XXXX » needs it (§4.14). | §3 LOBBY, §4.14, §6.4, §6.6 |
+| 23 | **A duplicate pseudo is refused by the host, and the refusal is recorded as the seat's error.** The state cannot tell "the host accepted me" from "the host refused me": the pseudo *is* the identity, and two devices may carry the same one (§4.9). So the host notes the message for that pseudo (§4.16) — the device that duplicates sees it, and the seated player sees it too until their next action clears it. The client-side check of §3 LOBBY applies wherever the client already has a seat list; the host's check is the guard. | §3 LOBBY, §4.9, §4.16 |
+| 24 | **The projection resolves the caller's seat case-insensitively** (`samePseudo`), because a device may have written « léa » where the seat is called « Léa »; the canonical spelling is used for the error, the vote and the own-definition index. The projection also exposes `myVote` — the caller's own vote — which is their own data, and no one else's. | §3 LOBBY, §3 VOTE, §4.2 |
+| 25 | **The only timer in the app is the join timeout** (§4.6, §4.7): five seconds, in the app shell, showing one message and one button. The failover silently makes the waiting device the host of a fresh room. | §4.6, §4.7 |
+| 26 | **The app side of the debug hook is written in D1**, because the harness needs to read the phase from the very first screen; D6 verifies it (`npm run e2e -- --smoke` reads a non-empty phase from the hook and drives the whole « create a room » flow with it). | §6.6, §12.8, §12.11 |
+| 27 | **The storage module is created in D1**, because the Home and the Lobby need `jdd.name`, `jdd.host` and `jdd.room` (§4.14). E3 and E4 add `jdd.hist` and `jdd.draft` to the same module, and E4 adds the round-trip tests. | §6.4, §12.8, §12.9 |

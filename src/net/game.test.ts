@@ -6,6 +6,8 @@ import { createMemoryTransport, flush } from './transport';
 const keepOrder = (items: readonly Author[]) => items.slice();
 
 type Table = {
+  /** Le code de la salle, pour y faire entrer un autre appareil. */
+  code: string;
   host: Session;
   bob: Session;
   chloe: Session;
@@ -57,7 +59,7 @@ function table(options: { hist?: string[] } = {}): Table {
     throw new Error(`joueur inconnu : ${pseudo}`);
   };
 
-  return { host, bob, chloe, unions: () => unions, sessionOf };
+  return { code, host, bob, chloe, unions: () => unions, sessionOf };
 }
 
 /** Des mots différents à chaque manche : un mot rejoué est refusé. */
@@ -262,5 +264,51 @@ describe('une partie complète, entre trois appareils', () => {
     flush();
 
     expect(t.bob.view().waitingFor).toEqual(['Alice']);
+  });
+});
+
+describe('le pseudo déjà pris', () => {
+  it('est refusé par l’hôte, et dit à l’appareil qui se duplique', () => {
+    const t = table();
+
+    // Un autre appareil débarque avec le pseudo de Bob.
+    const impostor = createSession({
+      transport: createMemoryTransport('peer-impostor'),
+      room: t.code,
+      name: 'Bob',
+      role: 'guest',
+    });
+    impostor.start();
+    flush();
+
+    const state = t.host.store.getSnapshot();
+    // Le siège n'est pas doublé : Bob n'a qu'une place.
+    expect(state.seats).toEqual(['Alice', 'Bob', 'Chloé']);
+    // Et l'appareil fautif voit le message (§4.16).
+    expect(state.errors['Bob']).toBe('Ce pseudo est déjà pris dans cette salle.');
+  });
+
+  it('ne gêne pas le retour d’un joueur déconnecté', () => {
+    const t = table();
+    t.chloe.leave();
+    flush();
+
+    // Chloé revient : elle reprend son siège, sans message d'erreur.
+    t.chloe.start();
+    flush();
+
+    const state = t.host.store.getSnapshot();
+    expect(state.connected['Chloé']).toBe(true);
+    expect(state.errors['Chloé']).toBeUndefined();
+  });
+
+  it('ne confond pas le « bonjour » redit par un appareil connu', () => {
+    const t = table();
+
+    // Un appareil connu redit bonjour : c'est un rappel, pas un doublon.
+    t.bob.start();
+    flush();
+
+    expect(t.host.store.getSnapshot().errors['Bob']).toBeUndefined();
   });
 });

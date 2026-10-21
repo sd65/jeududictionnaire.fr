@@ -12,7 +12,7 @@
 
 import { reduce, type Action } from '../game/reduce';
 import { type View, project } from '../game/project';
-import { initialState, samePseudo, type Author, type State } from '../game/state';
+import { initialState, isPseudoTaken, samePseudo, type Author, type State } from '../game/state';
 import { excludedSet, normalize } from '../game/words';
 import { createStore, type Store } from '../store/store';
 import { decode, encode, guestAction, guestMessage, isHostMessage } from './protocol';
@@ -44,6 +44,8 @@ export type SessionOptions = {
 export type Session = {
   readonly role: SessionRole;
   readonly name: string;
+  /** Le code de la salle. */
+  readonly room: string;
   readonly store: Store<State>;
   /** La projection pour cet appareil (§4.2). */
   view(): View;
@@ -65,7 +67,7 @@ export type Session = {
 const HIST_CAP = 3000;
 
 /** La marque du pair qui est l'hôte, pour un invité. */
-const HOST_PEER = 'hôte';
+const HOST_PEER = '\u0000';
 
 export function createSession(options: SessionOptions): Session {
   const { transport, room, name, role } = options;
@@ -82,7 +84,17 @@ export function createSession(options: SessionOptions): Session {
   /** `peerId → pseudo` : chez l'hôte, les sièges ; chez l'invité, l'hôte. */
   const peers = new Map<string, string>();
 
-  const excluded = () => excludedSet(hist, [...union]);
+  /**
+   * Les mots exclus : l'historique local ∪ l'union (§4.4).
+   *
+   * Le résultat est mis en cache : il ne change qu'avec l'historique ou
+   * l'union, et l'écran s'en sert comme dépendance de rendu.
+   */
+  let excludedCache: Set<string> | null = null;
+  const excluded = (): ReadonlySet<string> => {
+    if (!excludedCache) excludedCache = excludedSet(hist, [...union]);
+    return excludedCache;
+  };
 
   /** Le mot de la manche en cours rejoint l'historique local (§4.4). */
   const rememberWord = (state: State) => {
@@ -90,6 +102,7 @@ export function createSession(options: SessionOptions): Session {
     if (hist.includes(state.word)) return;
     hist.push(state.word);
     if (hist.length > HIST_CAP) hist = hist.slice(-HIST_CAP);
+    excludedCache = null;
     options.onHistory?.([...hist]);
   };
 
@@ -129,6 +142,7 @@ export function createSession(options: SessionOptions): Session {
         rememberWord(message.state);
       } else if (message.k === 'union') {
         union = new Set(message.words.map(normalize));
+        excludedCache = null;
         options.onUnion?.([...union]);
       }
       return;
@@ -139,10 +153,23 @@ export function createSession(options: SessionOptions): Session {
 
     if (message.k === 'hello') {
       const before = store.getSnapshot();
-      const after = reduce(before, { k: 'hello', name: message.name }, {
-        excluded: excluded(),
-        shuffle,
-      });
+      const deps = { excluded: excluded(), shuffle };
+
+      // Le pair est-il déjà connu ? Si oui, c'est son propre « bonjour »
+      // redit à chaque arrivée (§4.9) ; sinon, c'est un autre appareil qui
+      // porte peut-être déjà ce pseudo (§3 LOBBY).
+      const known = peers.get(from);
+      const isDuplicate =
+        isPseudoTaken(before, message.name) &&
+        (known === undefined || !samePseudo(known, message.name));
+
+      let after = before;
+      if (isDuplicate) {
+        // Un doublon : l'hôte refuse, et le dit à ce pseudo (§4.16).
+        after = reduce(after, { k: 'duplicate', by: message.name }, deps);
+      }
+      after = reduce(after, { k: 'hello', name: message.name }, deps);
+
       const seat = after.seats.find((s) => samePseudo(s, message.name));
       const seated = seat !== undefined && after.connected[seat] === true;
       const wasSeated = seat !== undefined && before.connected[seat] === true;
@@ -152,6 +179,7 @@ export function createSession(options: SessionOptions): Session {
         // pseudo, on fusionne son historique, on diffuse l'union (§4.4).
         peers.set(from, seat!);
         for (const word of message.hist) union.add(normalize(word));
+        excludedCache = null;
         options.onUnion?.([...union]);
         broadcastUnion();
       }
@@ -202,6 +230,7 @@ export function createSession(options: SessionOptions): Session {
   return {
     role,
     name,
+    room,
     store,
 
     view: () => project(store.getSnapshot(), name),

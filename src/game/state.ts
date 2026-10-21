@@ -89,3 +89,16 @@ export function samePseudo(a: string, b: string): boolean {
 export function seatIndex(state: State, pseudo: string): number {
   return state.seats.findIndex((seat) => samePseudo(seat, pseudo));
 }
+
+/**
+ * Le pseudo est-il déjà pris ? (§3 LOBBY)
+ *
+ * Un siège **connecté** qui le porte suffit : c'est un doublon. Un siège
+ * déconnecté, non : reprendre ce siège est un retour, pas un doublon
+ * (§4.9).
+ */
+export function isPseudoTaken(state: State, pseudo: string): boolean {
+  const index = seatIndex(state, pseudo);
+  if (index < 0) return false;
+  return state.connected[state.seats[index]!] === true;
+}

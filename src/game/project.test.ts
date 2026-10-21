@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { BUTTONS } from '../ui/text';
 import { gameFixture, HOST, PLAYERS, WRITERS, type FixtureStop } from '../test/fixtures';
 import { reduce } from './reduce';
-import { adminBar, project } from './project';
+import { absenceReason, adminBar, project } from './project';
 
 const build = gameFixture;
 
@@ -238,5 +238,23 @@ describe('la barre d’administration', () => {
     const buttons = adminBar(build('END'));
     expect(buttons).toHaveLength(1);
     expect(buttons[0]?.label).toBe(BUTTONS.replay);
+  });
+});
+
+describe('l’absence à la table', () => {
+  const state = gameFixture('LOBBY');
+
+  it('ne se remarque pas quand on est à la table', () => {
+    expect(absenceReason(project(state, 'Alice'))).toBe('none');
+    expect(absenceReason(project(state, 'alice'))).toBe('none');
+  });
+
+  it('signale une partie commencée', () => {
+    const started = gameFixture('PICK');
+    expect(absenceReason(project(started, 'Zoé'))).toBe('late');
+  });
+
+  it('attend, dans le salon, sans raison plus précise', () => {
+    expect(absenceReason(project(state, 'Zoé'))).toBe('waiting');
   });
 });

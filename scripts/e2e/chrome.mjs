@@ -117,6 +117,43 @@ export class Page {
     return waitUntil(async () => this.evaluate(expression), { timeout, label });
   }
 
+  /**
+   * Écrit dans un champ, trouvé par son étiquette visible.
+   *
+   * Comme les boutons, les champs sont trouvés par le texte que le joueur
+   * voit : le harnais ne gratte jamais le DOM (§12.11).
+   */
+  async fill(label, text) {
+    const filled = await this.evaluate((wanted, value) => {
+      const labels = [...document.querySelectorAll('label')];
+      const found = labels.find((node) => {
+        const caption = node.querySelector('.field__label');
+        return (caption?.textContent ?? node.textContent ?? '').trim() === wanted;
+      });
+      const field = found?.control ?? null;
+      if (!field) return false;
+      // Le setter natif : React n'écoute sinon les changements de valeur.
+      const proto =
+        field instanceof HTMLTextAreaElement
+          ? HTMLTextAreaElement.prototype
+          : HTMLInputElement.prototype;
+      const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
+      setter?.call(field, value);
+      field.dispatchEvent(new Event('input', { bubbles: true }));
+      return true;
+    }, label, text);
+    if (!filled) throw new Error(`Champ introuvable : « ${label} »`);
+  }
+
+  /** Le texte d'un élément, pour lire ce que le joueur voit. */
+  async text(selector) {
+    const value = await this.evaluate(
+      (sel) => document.querySelector(sel)?.textContent?.trim() ?? '',
+      selector,
+    );
+    return value;
+  }
+
   /** Va à une adresse et attend la fin du chargement. */
   async goto(url) {
     await this.send('Page.navigate', { url });

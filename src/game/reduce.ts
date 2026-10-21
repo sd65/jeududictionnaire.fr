@@ -27,6 +27,12 @@ import { normalize } from './words';
 export type Action =
   /** Un joueur arrive ou revient (§3 LOBBY, §4.9). */
   | { k: 'hello'; name: string }
+  /**
+   * L'hôte refuse un doublon : le pseudo est déjà porté par un siège
+   * connecté (§3 LOBBY). L'erreur est notée pour ce pseudo — c'est
+   * l'appareil qui se duplique qui la voit (§4.16).
+   */
+  | { k: 'duplicate'; by: string }
   /** L'hôte change les options de la table (§3 LOBBY). */
   | { k: 'setOptions'; by: string; vocal: boolean; tours: number }
   /** L'hôte lance la partie : LOBBY → PICK. */
@@ -143,6 +149,15 @@ export function reduce(state: State, action: Action, deps: ReduceDeps = {}): Sta
         seats: [...state.seats, name],
         connected: { ...state.connected, [name]: true },
       };
+    }
+
+    case 'duplicate': {
+      // Un pseudo déjà porté par un siège connecté : l'appareil qui se
+      // duplique voit le message (§3 LOBBY, §4.16). Le pseudo est *l*
+      // identité, l'état ne peut donc pas distinguer les deux appareils :
+      // le message est noté pour ce pseudo, et partira au premier qui agit.
+      if (seatIndex(state, action.by) < 0) return state;
+      return { ...state, errors: withError(state.errors, action.by, MESSAGES.pseudoTaken) };
     }
 
     case 'setOptions': {

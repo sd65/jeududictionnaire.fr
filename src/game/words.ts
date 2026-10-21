@@ -70,3 +70,13 @@ export function deck(
   const eligible = words.filter((word) => !excluded.has(normalize(word.w)));
   return shuffle(eligible).slice(0, count);
 }
+
+/**
+ * La navigation dans la pioche est **circulaire** : après la dernière carte,
+ * on revient à la première, et avant la première on tombe sur la dernière
+ * (§3 PICK). La pioche elle-même n'est jamais remélangée pendant le PICK.
+ */
+export function deckIndex(current: number, delta: number, length: number): number {
+  if (length <= 0) return 0;
+  return (((current + delta) % length) + length) % length;
+}

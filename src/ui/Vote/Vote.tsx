@@ -1,17 +1,27 @@
+import { Ballot, DictationCard } from '../Ballot/Ballot';
+import { LABELS } from '../text';
 import type { ScreenProps } from '../types';
 
-/** Le bulletin : des numéros en mode vocal, des définitions en mode normal. */
-export function Vote({ view }: ScreenProps) {
+/**
+ * Le vote (§3 VOTE).
+ *
+ * Le bulletin est ouvert. La carte de dictation reste sur l'écran du
+ * Chooser, jusqu'à la révélation : il peut faire répéter une définition.
+ */
+export function Vote({ view, dispatch, me }: ScreenProps) {
+  if (view.isChooser) {
+    return (
+      <section className="screen screen--vote">
+        <h2>{LABELS.voteTitle}</h2>
+        <DictationCard view={view} />
+      </section>
+    );
+  }
+
   return (
     <section className="screen screen--vote">
-      <h2>Le vote</h2>
-      <ol className="ballot">
-        {Array.from({ length: view.optionsCount }, (_, index) => (
-          <li key={index} className={index === view.myIdx ? 'ballot__own' : undefined}>
-            {view.showTexts ? (view.options[index] ?? '') : `définition n°${index + 1}`}
-          </li>
-        ))}
-      </ol>
+      <h2>{LABELS.voteTitle}</h2>
+      <Ballot view={view} dispatch={dispatch} me={me} />
     </section>
   );
 }

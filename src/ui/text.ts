@@ -32,10 +32,15 @@ export const MESSAGES = {
   /** local */
   unstable: 'Connexion instable',
   /** local */
+  roomCodeInvalid: 'Code de salle : quatre lettres.',
+  /** local */
+  joinTimeout:
+    'On dirait que cela prend plus de temps que d’habitude. Vérifie le code, le Wi-Fi et la connexion Internet — ou lance un nouveau salon.',
+  /** local */
   wordListFailed: 'Impossible de charger la liste de mots. Saisie manuelle uniquement.',
 } as const;
 
-/** Les libellés des boutons de l'hôte, de §4.15. */
+/** Les libellés de boutons de l'hôte, de §4.15. */
 export const BUTTONS = {
   start: 'Démarrer',
   lecture: 'Lecture',
@@ -44,4 +49,75 @@ export const BUTTONS = {
   finalRanking: 'Voir le classement',
   end: 'Terminer la partie',
   replay: 'Rejouer',
+} as const;
+
+/** Les libellés des écrans et des actions des joueurs. */
+export const LABELS = {
+  /* L'accueil (§4.14) */
+  pseudo: 'Pseudo',
+  create: 'Créer une salle',
+  join: 'Rejoindre',
+  joinRoom: 'Entrer dans la salle',
+  roomCode: 'Code de la salle',
+  room: 'Salle',
+  resume: (code: string) => `Reprendre la salle ${code}`,
+  comeback: (code: string) => `Revenir dans la salle ${code}`,
+  about: 'À propos',
+  cancel: 'Annuler',
+  newRoom: 'Nouvelle salle',
+  createNewRoom: 'Créer un nouveau salon',
+  waitingHost: 'En attente de l’hôte…',
+  close: 'Fermer',
+  home: 'Accueil',
+  backHome: "Retour à l'accueil",
+
+  /* Le salon (§3 LOBBY) */
+  table: 'La table',
+  vocal: 'Mode vocal seul',
+  tours: 'Nombre de tours',
+  players: 'Joueurs',
+  hostBadge: 'hôte',
+  you: 'toi',
+
+  /* Le choix du mot (§3 PICK) */
+  pickTitle: 'Choisis un mot',
+  waitingPick: 'Le Chooser choisit un mot…',
+  choose: '✓ Choisir ce mot',
+  previousCard: '‹',
+  nextCard: '›',
+  manualEntry: 'Saisir un mot à la main',
+  word: 'Mot',
+  category: 'Catégorie',
+  definition: 'Définition',
+  loadingWords: 'Chargement de la liste de mots…',
+  emptyDeck: 'Plus aucun mot disponible : saisis-en un à la main.',
+
+  /* La fausse définition (§3 DRAFT) */
+  draftTitle: 'Écris une fausse définition',
+  yourFake: 'Ta fausse définition',
+  send: 'Envoyer',
+  sent: 'Envoyée !',
+  submitted: (done: number, total: number) =>
+    `${done} / ${total} ont envoyé la leur.`,
+  waitingOthers: 'En attendant les autres…',
+
+  /* La dictée (§3 DICTATE) */
+  dictateTitle: 'La dictée',
+  listening: 'Écoute, et retiens.',
+  dictating: 'Dictes les définitions, une par une.',
+  validate: 'Passer au vote — tout le monde a entendu',
+
+  /* Le vote (§3 VOTE) */
+  voteTitle: 'Le vote',
+  voteFor: 'Je crois que c’est la n°',
+  voted: 'Vote enregistré.',
+  real: 'vraie',
+
+  /* La révélation et la fin (§5) */
+  revealTitle: 'La révélation',
+  endTitle: 'Le classement',
+  roundPoints: 'Points de la manche',
+  totalPoints: 'Points au total',
+  points: (count: number) => (count > 1 ? `${count} points` : `${count} point`),
+  place: (place: number) => `${place}.`,
 } as const;

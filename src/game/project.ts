@@ -14,7 +14,15 @@
 
 import { BUTTONS } from '../ui/text';
 import { rank, roundPoints, type Standing } from './scoring';
-import { expectedWriters, hostOf, seatIndex, totalRounds, type Author, type Phase, type State } from './state';
+import {
+  expectedWriters,
+  hostOf,
+  samePseudo,
+  totalRounds,
+  type Author,
+  type Phase,
+  type State,
+} from './state';
 
 export type View = {
   phase: Phase;
@@ -39,6 +47,8 @@ export type View = {
   authors: Author[];
   /** L'index de la fausse définition du joueur, ou −1. */
   myIdx: number;
+  /** L'index de l'option votée par le joueur, ou −1. */
+  myVote: number;
   /** L'index de la vraie définition, ou −1. */
   realIdx: number;
   /** Le mot et sa catégorie. */
@@ -78,9 +88,12 @@ export function project(state: State, me: string | null): View {
   const phase = state.phase;
   const seats = state.seats;
   const host = hostOf(state);
-  const isSeated = me !== null && seatIndex(state, me) >= 0;
-  const isHost = me !== null && host !== null && me === host;
-  const isChooser = me !== null && me === state.chooser;
+  // Le siège du joueur, avec l'orthographe canonique : un appareil peut avoir
+  // écrit « léa » là où le siège s'appelle « Léa » (§3 LOBBY).
+  const mySeat = me === null ? null : (seats.find((seat) => samePseudo(seat, me)) ?? null);
+  const isSeated = mySeat !== null;
+  const isHost = mySeat !== null && host !== null && samePseudo(mySeat, host);
+  const isChooser = mySeat !== null && state.chooser !== null && samePseudo(mySeat, state.chooser);
   const vocal = state.vocal;
 
   // Le bulletin est visible : la règle unique de vote, dans les deux modes.
@@ -133,6 +146,7 @@ export function project(state: State, me: string | null): View {
       options: [],
       authors: [],
       myIdx: -1,
+      myVote: -1,
       realIdx: -1,
       word: '',
       category: '',
@@ -165,7 +179,9 @@ export function project(state: State, me: string | null): View {
     optionsCount: showNumbers ? state.ballot.length : 0,
     options: showOptions ? state.ballot.map(optionText) : [],
     authors: showAuthors ? state.ballot.slice() : [],
-    myIdx: me === null || !showNumbers ? -1 : state.ballot.findIndex((author) => author === me),
+    myIdx: mySeat === null || !showNumbers ? -1 : state.ballot.findIndex((author) => author === mySeat),
+    /** L'index de l'option votée par le joueur, ou −1. */
+    myVote: mySeat === null ? -1 : (state.votes[mySeat] ?? -1),
     realIdx:
       phase === 'REVEAL' || dictationCard ? state.ballot.indexOf('real') : -1,
     word: showWord ? state.word : '',
@@ -180,7 +196,7 @@ export function project(state: State, me: string | null): View {
     seats,
     connected: state.connected,
     waitingFor: seats.filter((seat) => !state.connected[seat]),
-    myError: me === null ? null : (state.errors[me] ?? null),
+    myError: mySeat === null ? null : (state.errors[mySeat] ?? null),
     round: state.round,
     totalRounds: totalRounds(state),
     tours: state.tours,
@@ -193,6 +209,27 @@ export function project(state: State, me: string | null): View {
 /* La barre d'administration de l'hôte : une dérivation séparée de l'état.   */
 /* ------------------------------------------------------------------------ */
 
+/**
+ * Pourquoi cet appareil n'est-il pas à la table ? (§4.8, §4.16)
+ *
+ * Le cas « pseudo déjà pris » ne passe **pas** par ici : l'état ne peut pas
+ * distinguer « l'hôte m'a accepté » de « l'hôte m'a refusé », puisque le
+ * pseudo *est* l'identité (§4.9). C'est l'hôte qui tranche, en notant
+ * l'erreur pour ce siège — et c'est elle que l'appareil affiche.
+ */
+export type Absence =
+  /** Il est à la table : rien à signaler. */
+  | 'none'
+  /** La partie a commencé sans lui (§4.8). */
+  | 'late'
+  /** Il attend : son « bonjour » n'est pas encore passé (§4.9). */
+  | 'waiting';
+
+export function absenceReason(view: View): Absence {
+  if (view.isSeated) return 'none';
+  if (view.phase !== 'LOBBY') return 'late';
+  return 'waiting';
+}
 export type AdminButtonId = 'start' | 'lecture' | 'reveal' | 'next' | 'end' | 'replay';
 
 export type AdminButton = {

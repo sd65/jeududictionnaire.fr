@@ -410,3 +410,20 @@ describe('le retour de l’hôte', () => {
     expect(state.connected.Chloé).toBe(true);
   });
 });
+
+describe('le doublon de pseudo', () => {
+  it('note le message pour ce pseudo', () => {
+    const state = reduce(lobby(), { k: 'duplicate', by: 'Bob' });
+    expect(state.errors.Bob).toBe(MESSAGES.pseudoTaken);
+  });
+
+  it('ne note rien pour un pseudo qui n’est pas à la table', () => {
+    const before = lobby();
+    expect(reduce(before, { k: 'duplicate', by: 'Zoé' })).toBe(before);
+  });
+
+  it('ne double pas le siège', () => {
+    const state = reduce(lobby(), { k: 'duplicate', by: 'Bob' });
+    expect(state.seats).toEqual(['Alice', 'Bob', 'Chloé']);
+  });
+});

@@ -3,6 +3,7 @@ import {
   expectedWriters,
   hostOf,
   initialState,
+  isPseudoTaken,
   isValidPseudo,
   samePseudo,
   seatIndex,
@@ -104,3 +105,25 @@ describe('la recherche d’un siège', () => {
     expect(seatIndex(state, 'Zoé')).toBe(-1);
   });
 });
+
+describe('le pseudo déjà pris', () => {
+  const state: State = {
+    ...initialState(),
+    seats: ['Alice', 'Léa'],
+    connected: { Alice: true, Léa: false },
+  };
+
+  it('est pris quand un siège connecté le porte', () => {
+    expect(isPseudoTaken(state, 'alice')).toBe(true);
+    expect(isPseudoTaken(state, 'ALICE')).toBe(true);
+  });
+
+  it('ne l’est pas quand le siège est déconnecté : c’est un retour', () => {
+    expect(isPseudoTaken(state, 'léa')).toBe(false);
+  });
+
+  it('ne l’est pas quand personne ne le porte', () => {
+    expect(isPseudoTaken(state, 'Zoé')).toBe(false);
+  });
+});
+

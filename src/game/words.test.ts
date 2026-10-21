@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deck, excludedSet, normalize, shuffle, type Word } from './words';
+import { deck, deckIndex, excludedSet, normalize, shuffle, type Word } from './words';
 
 describe('la normalisation', () => {
   it('ignore la casse et les accents', () => {
@@ -78,5 +78,23 @@ describe('la pioche', () => {
   it('accepte un pack entièrement exclu', () => {
     const pile = deck(words, new Set(['elephant', 'iguane', 'chloe']));
     expect(pile).toEqual([]);
+  });
+});
+
+describe('la navigation dans la pioche', () => {
+  it('tourne en rond', () => {
+    expect(deckIndex(0, 1, 3)).toBe(1);
+    expect(deckIndex(2, 1, 3)).toBe(0);
+    expect(deckIndex(0, -1, 3)).toBe(2);
+  });
+
+  it('saute autant de cartes qu’on le demande', () => {
+    expect(deckIndex(0, 3, 3)).toBe(0);
+    expect(deckIndex(1, 2, 5)).toBe(3);
+  });
+
+  it('reste sage sur une pioche vide', () => {
+    expect(deckIndex(0, 1, 0)).toBe(0);
+    expect(deckIndex(3, -2, 0)).toBe(0);
   });
 });
