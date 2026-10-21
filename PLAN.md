@@ -5,7 +5,7 @@
 **Format:** mobile-first web app, played on a handful of phones over a Wi-Fi network,
 with **no game server of our own**. Peer-to-peer via Trystero / Nostr relays (Internet required, see §6.1).
 **Status:** the app is **not built yet** — this plan is the specification for what to build.
-Decisions are recorded in §12.
+Decisions are recorded in §13.
 **Distribution:** no PWA for now. Built as static assets, served from the host's Mac on the local network (§6.1).
 **Source of truth:** this plan (PLAN.md) is the sole authoritative specification.
 The existing code (`scripts/`, `data/`) is only a source of inspiration and must not drive
@@ -580,18 +580,27 @@ type State = {
   VOTE), and the **VOTE → REVEAL** transition (all votes in, and host-forced).
 - `project` is tested as a pure function of `(state, me)`: the host's screen and a guest's
   screen are the same code path, so one set of tests covers both.
-- No component tests. Tests run with Vitest, without a browser.
+- **Screens are checked by a server render** (`renderToString`), not by a browser: each screen is
+  rendered from a projection fixture and must not crash. No DOM, no jsdom, no snapshots.
+- **The transport is an interface** (§12.1): the in-memory implementation lets a whole game run
+  inside a test file, so the end-to-end flow is covered without a network.
+- No browser, no component-testing library. Tests run with Vitest, in Node.
 
 ### 6.8 Build and local tooling
-The repo has no `package.json` yet; the build creates one at the root.
+The repo has no `package.json` yet; step **A1** of the build plan (§12) creates one at the root.
 
 | Command | What it does |
 |---|---|
 | `npm run dev` | Vite dev server on the Mac, `--host` so the phones on the same Wi-Fi can reach it. Useful while developing; the reload behaviour differs from the built app. |
-| `npm run build` | Vite production build into `dist/` (the app shell + hashed assets). |
+| `npm run build` | Vite production build into `dist/` (the app shell + hashed assets + `data/wordlist.json`). |
 | `npm run serve` | **LAN server**: serves `dist/` on the Mac's LAN address and prints the URL to open on the phones. |
 | `npm test` | Vitest, no browser (§6.7). |
+| `npm run test:watch` | Vitest in watch mode, while developing. |
+| `npm run typecheck` | `tsc --noEmit` — the types are checked without emitting. |
 | `npm run lexique` / `npm run defs` / `npm run preview` | The existing word-pack pipeline (§6.3), unchanged. |
+
+- The `package.json` scripts are the contract of the build plan: every step of §12 ends with
+  `npm test`, `npm run typecheck` and `npm run build` all green.
 
 - **The LAN server** is a small dependency-free Node script (`scripts/serve-lan.mjs`) that
   serves the built `dist/` over `0.0.0.0` on a chosen port and prints the machine's LAN URL
@@ -643,7 +652,7 @@ The threat model is “friends at a table”, not adversarial security:
 **Nothing is built yet.** This plan describes the whole target application: the React +
 TypeScript + Vite app (§6.6), the LAN server tooling (§6.8), and the seven-phase game loop
 (§6.2). The word pack and its pipeline (`scripts/`, `data/`) already exist and are ready
-(§6.3).
+(§6.3). The execution order is **§12**.
 
 **Features that are new in this plan** (i.e. not yet implemented anywhere): the seven-phase
 machine with a single code path for both modes (§6.2), the one-state / one-projection model
@@ -697,7 +706,98 @@ None. The only remaining work is phase 2 (wake-lock and HTTPS), see §6.8.
 
 ---
 
-## 12. Decision log
+## 12. Build plan (iterative)
+
+### 12.1 The rules of the build
+- **Small steps.** Each step below is small enough to finish in one sitting. Each one ends with
+  a green `npm test`, a green `npm run build`, a green `npm run typecheck`, and a commit.
+- **Every step has a test.** A step that cannot be tested is split until it can. "It works on my
+  phone" is the acceptance of the last phase only, never of an intermediate step.
+- **Logic away from the screen.** Everything decidable without a DOM lives in `game/` (pure) and
+  is tested with Vitest, in Node, without a browser (§6.7).
+- **The transport is an interface.** `net/` exposes a small interface with two implementations:
+  the real one (Trystero) and an in-memory one used by the tests. A whole game can therefore be
+  played inside a test file, with no network and no browser.
+- **The screens decide nothing.** A screen reads the `View` (§4.2) and draws it. That is what
+  keeps the game rules in one file, and what lets a screen be checked with a server render.
+- **The order matters.** A step builds on the previous one. No step is started before the
+  previous is committed and green.
+
+### 12.2 Phase A — the tooling (nothing playable yet)
+| # | Step | Deliverable | Test |
+|---|---|---|---|
+| A1 | `package.json` | Vite + React + TS + Vitest, and the scripts of §6.8 | `npm test` green on a trivial test, `npm run typecheck` green |
+| A2 | The Vite skeleton | `index.html`, `src/main.tsx`, `src/App.tsx`, the theme CSS, the font | `npm run build` → `dist/index.html` and `dist/fonts/patrick-hand.woff2` exist; `App` renders without crashing |
+| A3 | The word list in the build | `data/wordlist.json` copied to `dist/data/` at build time (a small plugin in `vite.config.ts`) | the file is in `dist/` after a build |
+| A4 | The LAN server | `scripts/serve-lan.mjs` serves `dist/` and prints the URL to open on the phones | `curl` on `/` → 200, on `/data/wordlist.json` → 200, on `../` → 404 |
+
+### 12.3 Phase B — the pure core (`src/game/`, no React, no network)
+| # | Step | Deliverable | Test |
+|---|---|---|---|
+| B1 | `state.ts` | the `State` type (§6.6) and `initialState()` | the initial state is the LOBBY, no seat, no Chooser, no score |
+| B2 | `reduce.ts` — LOBBY | `join`, `setOptions`, `start` | Start is refused under 3 seats and when a seat is disconnected; the seat set is frozen at start; the total round count is `tours × N` |
+| B3 | `reduce.ts` — PICK | `pick` | accepted only from the current Chooser and only in PICK; a word already played is refused |
+| B4 | `reduce.ts` — DRAFT | `def` | only from a Writer, only in DRAFT, **once** per round: a second `def` from the same seat changes nothing |
+| B5 | `reduce.ts` — DICTATE and VOTE | `valid`, `vote` | the ballot-visibility rule (vocal mode in DICTATE, both modes in VOTE); a vote for one's own fake is refused; a vote is irrevocable |
+| B6 | `reduce.ts` — REVEAL and END | `advance`, `end`, `replay` | the Chooser moves to the next seat and wraps around; the last round goes to END; « Rejouer » resets the scores and the round counter |
+| B7 | `scoring.ts` | the points of §5 and the dense ranking | the points table; the ties (1, 1, 2); the Chooser scores 0 |
+| B8 | `words.ts` | the normalisation, the shuffle, the exclusion, the deck | `Éléphant` ≡ `elephant`; the shuffle is a permutation; the deck is at most 100 cards and excludes the played words; a short pack is accepted |
+| B9 | `project.ts` | the projection (§4.2) | the whole table of §4.2, phase by phase and role by role; `canVote`, `showTexts`, `myIdx`, `waitingFor`, `myError` |
+
+### 12.4 Phase C — the transport and the shell
+| # | Step | Deliverable | Test |
+|---|---|---|---|
+| C1 | `net/transport.ts` | the interface, plus an in-memory implementation | a host and two guests exchange messages inside one process |
+| C2 | `net/protocol.ts` | the message types of §6.5 (`hello`, `pick`, `def`, `vote`, `valid`, `state`, `union`) | each message encodes and decodes; an unknown `k` is ignored |
+| C3 | The integration test | a whole game, from the lobby to the ranking | the game completes; the scores match §5; the union is broadcast on each join and never per round |
+| C4 | `net/trystero.ts` | the real transport (the same interface) | the C1–C3 suite passes against the in-memory transport; the real one is checked by hand on two phones (§12.8) |
+| C5 | `store/store.ts` | the external store and `useSyncExternalStore` | `subscribe` / `getSnapshot`; one change notifies the subscribers once |
+| C6 | The app shell | the screen is chosen from the phase; the admin bar for the host | every screen renders without crashing (server render, no browser) |
+
+### 12.5 Phase D — the screens
+| # | Step | Deliverable | Test |
+|---|---|---|---|
+| D1 | Home and Lobby | create / join / resume, the pseudo, the options, « À propos » | the server render; the pseudo rules live in `game/`, not in the component |
+| D2 | Pick | the deck of 100 cards, the manual entry | the navigation and the deck are in `game/`; the server render |
+| D3 | Draft | the fake field, the counters, the lock after sending | the server render |
+| D4 | Dictate and Vote | the dictation card, the ballot, the own option greyed out | the server render, with a projection fixture |
+| D5 | Reveal and End | the round points, the ranking | the server render |
+
+### 12.6 Phase E — the real world
+| # | Step | Deliverable | Test |
+|---|---|---|---|
+| E1 | The disconnection | the peer-leave handling, the blocking, the reconnection | the integration test: a guest leaves → the game is blocked → they come back → it resumes |
+| E2 | The host reload | the `jdd.host` snapshot and the restore | the integration test: the host reloads → the guests re-send `hello` → the game resumes where it was |
+| E3 | The history | `jdd.hist`, the union, « Effacer mon historique » | the union is broadcast on each join; the excluded set is the local history ∪ the union |
+| E4 | The local storage | `jdd.draft`, `jdd.name`, `jdd.room` | the round-trip through a fake localStorage |
+| E5 | The « À propos » screen | the attribution and the licences (§10) | the server render |
+| E6 | The theme | the paper, the ruled lines, the red and blue pens, the motion | a look on a real phone (the only step of this phase without an automated test) |
+| E7 | The wake lock | the best-effort request on every device | it never breaks the app when the context is not secure |
+
+### 12.7 Phase F — the acceptance
+| # | Step | Deliverable | Test |
+|---|---|---|---|
+| F1 | A whole game on 3 phones | the acceptance of the local build | by hand, following the game loop of §3 |
+| F2 | The edge cases | the refresh mid-round, the sleeping phone, the host leaving | by hand |
+
+### 12.8 The order, and what comes first
+The steps are strictly sequential. The first three are the ones to do right away, and they are
+the smallest possible vertical slice — a green test, a green build, nothing else:
+
+1. **A1** — the `package.json` and the dependencies, with one trivial test.
+2. **A2** — the Vite skeleton, the theme CSS, the font, and the build that produces `dist/`.
+3. **A3** — the word list copied into `dist/`, and the LAN server that serves it.
+
+After A1–A4 the phones can open the app (an empty page). Everything until B9 is invisible from
+the outside, and that is deliberate: the game rules are the part that must be exactly right, and
+they are the part that can be tested without a phone, a browser or a network.
+
+The build is not finished until **F1** passes: the app is only a game when a whole party can
+play it on real phones, over a real Wi-Fi network, with the real relay.
+
+---
+
+## 13. Decision log
 
 Decisions taken during the plan review, recorded so the reasoning is not lost.
 
