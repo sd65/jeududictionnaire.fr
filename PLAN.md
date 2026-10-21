@@ -36,7 +36,7 @@ The game lives or dies on three qualities:
 | Role | Who | Privileges / duties |
 |---|---|---|
 | **Host** | The device that created the room. Technical and administrative role only; game-wise the host is a player like the others (Chooser or Writer according to the round) | Authoritative game state `S`; admin buttons per phase (manual advance only, never automatic). Admin view shows counts and names, never fake texts nor the real definition (§4.2). Host leaving = game paused until it returns (§4.11) |
-| **Chooser** | Rotates each round in join order. One **tour** = every seated player is Chooser exactly once (§5) | Secretly picks an obscure word and provides the **true definition**; **dictates all definitions aloud** during READ in the stable ballot order (§4.3); writes **no** fake; **never votes**; alone validates the end of the reading (« Passer au vote ») |
+| **Chooser** | Rotates each round in join order. One **tour** = every seated player is Chooser exactly once (§5) | Secretly picks an obscure word and provides the **true definition**; **dictates all definitions aloud** during DICTATE in the stable ballot order (§4.3); writes **no** fake; **never votes**; alone validates the end of the reading (« Passer au vote ») |
 | **Writer** | Every non-Chooser seated player (host included when not Chooser) | Writes **one** invented definition; then votes for the definition they believe is real |
 
 A game needs **≥ 3 seated players** (one Chooser + at least two Writers; with fewer, voting is
@@ -46,8 +46,12 @@ meaningless).
 
 ## 3. The round, phase by phase
 
-State machine: `LOBBY → PICK (round start) → DRAFT → READ → VOTE → REVEAL → (next round) → END`,
-plus `PENDING` (vocal mode only, between READ and REVEAL — see « PENDING » below).
+State machine: `LOBBY → PICK (round start) → DRAFT → DICTATE → VOTE → REVEAL → (next round) → END`.
+
+**Seven phases, and the machine is identical in both modes.** The modes differ only in **what
+the ballot looks like** and **when it becomes visible** (§3 DICTATE, §3 VOTE). One invariant
+governs voting throughout: **votes are accepted exactly when the ballot is visible to that
+Writer.** There is no mode-specific phase and no mode-specific branch in the phase machine.
 
 The rules below include deliberate subtleties that were corrected through playtesting —
 they are constraints, not implementation details.
@@ -109,30 +113,31 @@ they are constraints, not implementation details.
 - Once sent, a fake is locked: no re-submission; the host-side map is keyed per player.
 - No rule on identical fakes, or on a fake equal to the real definition: both are allowed.
 
-### READ — the dictation (no timer, 100% manual)
+### DICTATE — the Chooser reads the definitions aloud (no timer, 100% manual)
 - Definitions are **shuffled once on the host** (§4.3) into a **stable 1…N ballot order**.
   The **Chooser dictates aloud**, once each, in a neutral voice, announcing
   **« définition n°1 », « définition n°2 », …** in that exact order.
-- **Normal mode: guest phones show nothing about the definitions during READ**
-  (blank waiting screen, no texts, no numbers).
-- **Mode vocal seul exception:** phones show **only the ballot numbers** (1…N) and Writers
-  may vote *while the Chooser is still reading*.
+- **What the phones show is the only difference between the modes:**
+  - **Mode vocal seul:** phones show **only the ballot numbers** (1…N) — and the numbers are
+    **votable immediately**, so a Writer can vote *while the Chooser is still reading*.
+  - **Normal mode:** phones show **nothing** about the definitions (blank waiting screen, no
+    texts, no numbers). The definitions only appear on screen in VOTE.
 - Only when the Chooser has finished dictating do they press
   **« Passer au vote — tout le monde a entendu »**. The host's admin button only relays
-  this transition. If all vocal votes are already in, REVEAL fires right after validation.
+  this transition → VOTE.
+- The Chooser's **dictation card stays on screen from DICTATE through VOTE** (numbered stable
+  order + REAL badge), so they can repeat a definition on request at any point before the
+  reveal.
 
-### PENDING (vocal mode only — the votes that were not cast yet)
-- Entered when the Chooser validates in **mode vocal seul** but some Writers have not voted yet.
-  In normal mode the equivalent is the VOTE phase (guests vote on the texts they now see).
-- Votes keep being accepted, one per Writer, irrevocable.
-- **The Chooser's dictation card stays on screen** so they can repeat a definition if a player
-  asks for it. Guests still see only the numbered buttons, never the texts.
-- **REVEAL fires as soon as every Writer has voted.** The host may **force the reveal** at
-  any time (escape hatch, §4.10) — the round is then scored with the votes received.
-
-### VOTE (no timer, normal mode only; vocal mode has no separate VOTE — voting happened in READ)
-- All phones (Chooser excepted) see the definitions **on screen**, numbered 1…N in the stable
-  ballot order, and tap the one they believe is real. One vote, irrevocable, guarded host-side.
+### VOTE (no timer — the same phase in both modes)
+- The ballot is open. **Votes are accepted exactly when the ballot is visible to that Writer**
+  — one invariant, both modes, no exceptions.
+- **What is on screen:**
+  - **Mode vocal seul:** the **numbered buttons only** (1…N), never the texts. Writers who
+    already voted during DICTATE keep their vote; the others vote now.
+  - **Normal mode:** the **definitions on screen**, numbered 1…N in the stable ballot order,
+    and the Writer taps the one they believe is real.
+- One vote per Writer, irrevocable, guarded host-side.
 - **A Writer may not vote for their own fake definition.** The host **rejects** such a vote
   (the voter keeps their ballot and can pick another option). In normal mode the voter's own
   option is **greyed out** on their phone (the client matches its own submitted text against
@@ -142,7 +147,9 @@ they are constraints, not implementation details.
   signal, with the message « Tu ne peux pas voter pour ta propre définition. »
 - Votes are hidden until reveal — only the aggregate count of voters is broadcast.
 - The Chooser sees that others are voting but does not vote.
-- When all Writers have voted, the host advances manually to REVEAL.
+- When all Writers have voted, the **host presses « Révéler »** to move to REVEAL. The host may
+  also **force the reveal** at any time (§4.10) — the round is then scored with the votes
+  received.
 
 ### REVEAL
 - Every definition is shown with its author's name; the real one is tagged **“vraie”**.
@@ -170,18 +177,18 @@ The seat set is **frozen at game start** (no late join, §3). A disconnected sea
 What each role is allowed to **see** per phase (host → everyone). The host device holds `S` in
 full, but the host's *player UI* obeys the same guest column unless the host is the Chooser:
 
-| Field | LOBBY | PICK | DRAFT | READ normal (guest) | READ vocal (guest) | PENDING (vocal only) | VOTE (normal only) | REVEAL |
+| Field | LOBBY | PICK | DRAFT | DICTATE vocal (guest) | DICTATE normal (guest) | VOTE vocal (guest) | VOTE normal (guest) | REVEAL |
 |---|---|---|---|---|---|---|---|---|
 | word + category | — | — | ✓ | — | — | — | — | ✓ |
 | submitted names / counts | — | — | ✓ (no texts) | — | — | — | ✓ (counts) | — |
-| fake texts | — | — | — | — | — (never in vocal) | — (never in vocal) | ✓ (numbered, stable order) | ✓ |
-| ballot numbers 1…N | — | — | — | — | ✓ (votable immediately) | ✓ (still votable) | ✓ | ✓ |
-| “voted” counts (aggregate only) | — | — | — | — | ✓ | ✓ | ✓ | — |
+| fake texts | — | — | — | — (never in vocal) | — | — (never in vocal) | ✓ (numbered, stable order) | ✓ |
+| ballot numbers 1…N | — | — | — | ✓ (votable immediately) | — | ✓ (still votable) | ✓ | ✓ |
+| “voted” counts (aggregate only) | — | — | — | ✓ | — | ✓ | ✓ | — |
 | real index, votes detail, round points and total score | — | — | — | — | — | — | — | ✓ |
 
-Chooser private view: from READ on, the Chooser holds a dictation card with the numbered
+Chooser private view: from DICTATE on, the Chooser holds a dictation card with the numbered
 stable order and a REAL badge — **rendered on the Chooser's screen only**.
-During READ (normal mode), a guest's phone *displays* no playable information.
+During DICTATE (normal mode), a guest's phone *displays* no playable information.
 
 **Transport reality (accepted, §7):** the app uses a single broadcast channel with no targeted
 sends (§6.5), so every guest's device physically receives every message — including the fake
@@ -191,7 +198,7 @@ own device; for a friends' game that is an accepted trade-off, not a defect to e
 
 ### 4.3 Dictation order
 The real definition is shuffled among the fakes with a Fisher–Yates shuffle on the host,
-producing a **stable 1…N order frozen for the round** (same numbers in READ, VOTE, REVEAL).
+producing a **stable 1…N order frozen for the round** (same numbers in DICTATE, VOTE, REVEAL).
 The shuffled ballot travels in the shared `view`, but only the Chooser's UI renders it
 (the dictation card with its REAL badge). Nobody else — not even the host's player screen —
 sees the real one marked during dictation.
@@ -214,17 +221,17 @@ devices' histories**.
 
 ### 4.5 Mode vocal seul (numbers-first voting)
 Designed for the scenario where phones are face-down on the table:
-- Texts are **never** shown during READ or VOTE — phones show N numbered buttons.
-- Voting is allowed **during** the dictation, and if everyone votes before the Chooser
-  finishes, reveal waits only for the Chooser's « tout le monde a entendu » validation.
-- If some Writers have not voted when the Chooser validates, the round enters **PENDING**
-  (§3): the missing votes are still accepted, the Chooser keeps their dictation card (so they
-  can repeat a definition), and REVEAL fires when the last vote lands — or when the host
-  forces it (§4.10).
+- Texts are **never** shown during DICTATE or VOTE — phones show N numbered buttons.
+- The numbers are votable **from the start of DICTATE**: Writers vote *while the Chooser is
+  still reading*, which is the whole point of the mode.
+- Writers who have not voted when the Chooser validates simply keep voting in VOTE (same
+  numbered buttons) — REVEAL follows once the last vote lands, or when the host forces it
+  (§4.10).
+- The Chooser keeps their dictation card (§3 DICTATE) so they can repeat a definition.
 - This mode leans the burden onto the Chooser's voice — the “purest” rendition of the game.
 
 ### 4.6 Timeouts
-None. All phase transitions are manual: Chooser validates READ → VOTE; host advances every
+None. All phase transitions are manual: Chooser validates DICTATE → VOTE; host advances every
 other transition. No countdowns anywhere. Waiting screens show counts, except the list of disconnected players (§4.12), which shows names.
 
 ### 4.7 Guest waiting screen
@@ -258,8 +265,7 @@ is the same trust level as the room itself.
 The host title-bar is the admin bar: per-phase advance buttons and escape hatches (force
 reveal; never past a disconnected seat, §4.12). The only exit from a blocked game is
 « terminer la partie », which only the host can press (§4.12).
-**Force reveal** is available in PENDING (§3) and in VOTE: it ends the round with the votes
-received so far.
+**Force reveal** is available in VOTE: it ends the round with the votes received so far.
 
 ### 4.11 Host leaves = pause, not death
 If the host leaves (closes the tab, loses its connection, or reloads), the game is **paused**
@@ -306,9 +312,8 @@ The host's admin buttons appear on the host's device, next to its own player scr
 | LOBBY | « Démarrer » (enabled at ≥ 3 seated **and** all connected), options (« Mode vocal seul », « Nombre de tours ») | seat list | seat list | seat list, options read-only |
 | PICK | none | swipeable deck, « ✓ Choisir ce mot », manual entry | « Le Chooser choisit un mot » | same waiting text |
 | DRAFT | « Lecture » (enabled when every Writer has submitted) | list of who has submitted | 500-character field, « Envoyer », locked after sending | word shown |
-| READ | none (the Chooser validates) | dictation card, « Passer au vote — tout le monde a entendu » | normal: waiting screen; vocal: numbered vote buttons | same as Writer |
-| PENDING | « Révéler » (force reveal, always enabled) | dictation card stays, may repeat a definition | numbered vote buttons, still votable | same as Writer |
-| VOTE | « Révéler » (enabled when every Writer has voted) | waiting for votes | numbered definitions and vote | same as Writer |
+| DICTATE | none (the Chooser validates) | dictation card, « Passer au vote — tout le monde a entendu » | normal: waiting screen; vocal: numbered vote buttons | same as Writer |
+| VOTE | « Révéler » (enabled when every Writer has voted; force reveal always available) | dictation card stays, may repeat a definition | normal: numbered definitions and vote; vocal: numbered vote buttons | same as Writer |
 | REVEAL | « Manche suivante » (last round: « Voir le classement ») | round points, total scores | round points, total scores | same |
 | END | « Rejouer » | ranking | ranking | ranking, waiting for the host |
 
@@ -378,10 +383,9 @@ histories (`jdd.hist`) are kept. The END screen has no other button: no « Quitt
 LOBBY ──(host Start, ≥3 seated AND all connected)──▶ PICK ──(Chooser pick, host relays)──▶ DRAFT
       LOBBY ◀──(« Rejouer »: scores and round reset)── END ◀──(all rounds played)─── REVEAL
       PICK: chooser = next seat in join order (wraps); rounds = tours × N, frozen at start
-      DRAFT ──(all fakes in AND host advance)──▶ READ ──(Chooser "tout le monde a entendu")──▶ VOTE
-      READ (vocal mode): votes may arrive during the dictation; REVEAL after Chooser validation
-      READ (vocal mode) ──(validation but votes missing)──▶ PENDING ──(all votes in, or host forces)──▶ REVEAL
-      VOTE (normal only) ──(all votes in AND host advance)──▶ REVEAL
+      DRAFT ──(all fakes in AND host advance)──▶ DICTATE ──(Chooser "tout le monde a entendu")──▶ VOTE
+      VOTE ──(all Writers voted AND host reveals)──▶ REVEAL
+      The machine is identical in both modes; only the ballot rendering differs (§3, §4.5)
       Any phase: blocked while a seated player or the host is disconnected (§4.11, §4.12)
 ```
 
@@ -442,14 +446,14 @@ carries is listed in §7. Consequences to keep in mind while implementing:
 | `hello` | `{ name, hist: string[] }` | Seat new player (LOBBY only), or reclaim a disconnected seat by `name`. Reject duplicate pseudo or late join (`reject`). Merge `hist` into the host-side union. Reply with `view` **and** the current union (§4.4). |
 | `pick` | `{ w, p, d }` (`p` may be empty for manual entry) | Accept only from the current Chooser, in PICK. Reject if `w` already played in this game or on a seated device (`reject`, reason « mot déjà joué »). Otherwise store, go to DRAFT broadcast. |
 | `def` | `{ text }` (≤ 500 chars) | Accept only from a non-Chooser seated player, in DRAFT, once per round. |
-| `vote` | `{ idx }` (1…N) | Accept from a non-Chooser seated player, in READ (vocal), PENDING or VOTE, once per round. Irrevocable. **Rejected if `idx` is the voter's own fake** (the host knows the author of every index). |
-| `valid` | `{}` | Chooser only, in READ: « tout le monde a entendu ». Normal mode → VOTE. Vocal mode → REVEAL if every Writer has voted, else PENDING (§3). |
+| `vote` | `{ idx }` (1…N) | Accept from a non-Chooser seated player, **when the ballot is visible to them**: in DICTATE (vocal mode only) or in VOTE (both modes). Once per round. Irrevocable. **Rejected if `idx` is the voter's own fake** (the host knows the author of every index). |
+| `valid` | `{}` | Chooser only, in DICTATE: « tout le monde a entendu » → VOTE (both modes). |
 
 **Host → guests**
 
 | `k` | Payload | Notes |
 |---|---|---|
-| `view` | filtered state (§4.2) | Sent on every state change and in reply to `hello`. Includes `waitingFor: pseudo[]` when a seat is disconnected. Payload fields: `options` = the N definitions in the stable ballot order (**no** author, **no** REAL marker — this is what the VOTE screen shows), and from READ on also `dictation` = the same ballot *plus* a REAL marker, which **only the Chooser renders** (§4.2, §4.3). |
+| `view` | filtered state (§4.2) | Sent on every state change and in reply to `hello`. Includes `waitingFor: pseudo[]` when a seat is disconnected. Payload fields: `options` = the N definitions in the stable ballot order (**no** author, **no** REAL marker — this is what the VOTE screen shows), and from DICTATE on also `dictation` = the same ballot *plus* a REAL marker, which **only the Chooser renders** (§4.2, §4.3). |
 | `union` | `{ words: string[] }` | The **union of the seated devices' histories** (§4.4). Sent **once at game start** (LOBBY → PICK) and in reply to `hello` (so a rejoining client resyncs). **Never re-sent per round**: during the game every client adds the words it sees broadcast in DRAFT to its own local list. |
 | `reject` | `{ reason }` | Replaces the old `spectate` and `repick`. Reasons: duplicate pseudo, game in progress, word already played, own-definition vote. |
 
@@ -480,8 +484,8 @@ Notes:
   matching seat is marked disconnected (§4.12). A `hello` with a known pseudo replaces the old peer id.
 - **Settings:** `vocal` (default true) and `tours` (default 2, minimum 1) are part of the game
   state `S`. They are editable in LOBBY only.
-- **Structure:** one folder per phase for screens (`Lobby`, `Pick`, `Draft`, `Read`, `Pending`,
-  `Vote`, `Reveal`, `End`), plus `game/` (rules, pure), `net/` (transport), `store/`. No router:
+- **Structure:** one folder per phase for screens (`Lobby`, `Pick`, `Draft`, `Dictate`, `Vote`,
+  `Reveal`, `End`), plus `game/` (rules, pure), `net/` (transport), `store/`. No router:
   the room is read from `?room=` and the « À propos » screen is a state value.
 - **Validation:** incoming actions are validated in `reduce()` (phase, player, value ranges).
   No schema library.
@@ -493,8 +497,9 @@ Notes:
 - Automated tests cover: `reduce` (phase guards, scoring, the Chooser's exclusion), `ranking`
   (dense ranking), `shuffle`, the exclusion union (case- and accent-insensitive), and the
   per-recipient view filter (§4.2).
-- Also covered: the **own-vote rejection** (§3 VOTE) and the **PENDING → REVEAL** transition
-  (all votes in, and host-forced).
+- Also covered: the **own-vote rejection** (§3 VOTE), the **ballot-visibility rule** (a vote is
+  accepted iff the ballot is visible to that Writer — vocal mode in DICTATE, both modes in
+  VOTE), and the **VOTE → REVEAL** transition (all votes in, and host-forced).
 - No component tests. Tests run with Vitest, without a browser.
 
 ### 6.8 Build and local tooling
@@ -527,7 +532,7 @@ The repo has no `package.json` yet; the rebuild creates one at the root.
 
 The threat model is “friends at a table”, not adversarial security:
 
-- **Read-phase leak vector:** neutralized at the *rendering* level — during normal-mode READ a
+- **Read-phase leak vector:** neutralized at the *rendering* level — during normal-mode DICTATE a
   guest's phone displays no playable information (§4.2).
 - **No targeted sends (§6.5).** Every guest's device physically receives every message: the
   fake texts, the Chooser's dictation card with its REAL badge, and the `pick` payload with
@@ -558,13 +563,12 @@ paper-cahier visual theme (self-hosted handwriting fonts).
 
 **Prototype differs from this plan (to be aligned in the rebuild):** timers (removed, §4.6),
 spectate flow (replaced by `reject`, §4.8), disconnection gating (new, §4.12), unique pseudos
-(new, §3), tours-based round count (new, §5), union history (new, §4.4), the `PENDING` phase
-(new, §3), the own-vote rejection (new, §3 VOTE), a disconnected seat blocking Start
-(new, §3 LOBBY).
+(new, §3), tours-based round count (new, §5), union history (new, §4.4), the own-vote rejection
+(new, §3 VOTE), a disconnected seat blocking Start (new, §3 LOBBY).
 
 **Not yet built (the rebuild):** everything above is the *prototype*; the plan describes the
-target. The React + TypeScript + Vite app (§6.6), the LAN server tooling (§6.8) and the
-`PENDING` phase do not exist yet. The prototype's `_old-prototype/` folder is reference only.
+target. The React + TypeScript + Vite app (§6.6) and the LAN server tooling (§6.8) do not exist
+yet. The prototype's `_old-prototype/` folder is reference only.
 
 ---
 
@@ -616,7 +620,7 @@ Decisions taken during the plan review, recorded so the reasoning is not lost.
 |---|---|---|
 | 1 | **The word list ships to every device.** Players may look up a definition and cheat; accepted, because the game is for friends and every player must be able to be Chooser (they draw the deck locally). | §3 PICK, §6.3, §7 |
 | 2 | **No targeted sends.** One broadcast channel, simple. The privacy cost is accepted and documented: every device receives every message; only the *rendering* is filtered per role. | §6.5, §4.2, §7 |
-| 3 | **PENDING phase** (vocal mode): after « tout le monde a entendu », votes are still accepted until every Writer has voted, then REVEAL; the Chooser keeps the dictation card so they can repeat definitions; the host may force the reveal. | §3 PENDING, §4.5, §6.2, §4.15 |
+| 3 | **One phase machine for both modes.** `PENDING` is gone: DICTATE and VOTE are shared by vocal and normal mode, and differ only in what the ballot looks like (numbers vs. numbers + texts) and when it becomes visible. One invariant governs voting: **votes are accepted exactly when the ballot is visible to that Writer**. The reveal trigger is the same in both modes: the **host presses « Révéler »** once every Writer has voted (force-reveal always available). The Chooser's dictation card stays up from DICTATE through VOTE, so they can repeat a definition. | §3 DICTATE/VOTE, §4.2, §4.5, §6.2, §4.15 |
 | 4 | **A Writer cannot vote for their own fake.** The host rejects it; in normal mode the option is greyed out on the voter's phone. | §3 VOTE, §6.5, §4.16 |
 | 5 | **A disconnected seat blocks Start** (it still counts as seated). | §3 LOBBY, §6.2 |
 | 6 | **The history union is sent once**, at game start and on `hello` — not re-sent per round. During the game each client adds the words it sees broadcast in DRAFT to its own list. | §4.4, §6.5 |
