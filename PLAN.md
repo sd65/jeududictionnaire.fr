@@ -87,9 +87,9 @@ they are constraints, not implementation details.
 - Only the Chooser acts. They get a **swipeable deck of 100 cards** (word, category `p`,
   definition `d`), browsed circularly via swipe or ‹ › buttons, with **✓ Choisir ce mot**
   under the card.
-- Deck = **100 cards sampled uniformly at random from `wordlist.json`** (§6.3), freshly drawn
-  **per Chooser per round**, after exclusions below. Algorithm: shuffle the eligible words, take the first 100. Order is circular; no reshuffle mid-PICK.
-- If the pack cannot supply 100 eligible cards, the deck is simply shorter. No special
+- Deck = **100 cards sampled uniformly at random from the word list** (§6.3), freshly drawn
+  **per Chooser per round**, after exclusions below. Algorithm: shuffle the eligible words, take the first 100. The eligible words are the ones the device has **loaded** — one shard of the pack, which is shuffled, so a shard is an unbiased sample of the pack (§6.3). Order is circular; no reshuffle mid-PICK.
+- If the loaded words cannot supply 100 eligible cards, the device loads another shard (up to three, §6.3); after that the deck is simply shorter. No special
   treatment: a short or empty deck is acceptable; manual entry is always available.
 - Manual entry is always possible in a collapsed panel: word, gender/category (free text, optional),
   definition (required — the Chooser must be able to *vouch* for it). **No validation** beyond
@@ -473,6 +473,45 @@ have no gender in the data. Card display uses `p` as-is.
 Note for QC: the pack contains some foreign-looking entries (e.g. `acetabulum`); the pack
 should be reviewed with `scripts/preview.mjs` before release (not a spec blocker).
 
+**The pack is loaded in pieces, not whole.** The pack is 1.6 MB raw (393 623 B gzipped) and a
+round needs **100** cards out of the 10 548 (§3 PICK). A device therefore fetches a **shard**,
+not the pack.
+
+The obvious tool — HTTP `Range` — does not work on the deployed site, and the plan says so
+rather than pretending otherwise. Measured on `jeududictionnaire.fr` (2026-10-21):
+
+| Request | Answer |
+|---|---|
+| `GET /data/wordlist.json` | `200`, `accept-ranges: bytes`, `content-length: 1637718` |
+| `Range: bytes=0-1023` **with** `Accept-Encoding: gzip` (what a browser sends) | `206`, `content-encoding: gzip`, `content-range: bytes 0-1023/**393623**` — the range is applied to the **compressed** representation, so those 1 024 bytes are a truncated gzip stream: **undecodable** |
+| `Range: bytes=0-1023` with `Accept-Encoding: identity` | `206`, `content-range: bytes 0-1023/**1637718**`, no `content-encoding` — the raw JSON prefix, **usable** |
+
+`Range` only ever applies to the representation the server chose, and GitHub Pages compresses.
+A browser **cannot** ask for an uncompressed answer either: `Accept-Encoding` is a forbidden
+header name, the user agent always sends `gzip, deflate, br`. The LAN server
+(`scripts/serve-lan.mjs`) ignores `Range` altogether — it answers `200` with the whole file.
+
+So the pack is made **sharded**, and `Range` is supported where it can be:
+
+- **The pack is shuffled when it is generated** (seeded PRNG, the seed written in `meta.seed`).
+  The rarity order stays in `data/candidates.json`, where the pipeline needs it; the order of
+  `wordlist.json` is no longer meaningful. Consequence: **any subset of the pack is an unbiased
+  sample of it**. Without the shuffle — the pack is sorted by increasing frequency — every subset
+  would be the *rarest* words, and every game would propose the same cards.
+- **The pack is published in shards**: `data/shards/00.json` … `31.json` — 32 shards, ~330 words
+  each, ~50 KB raw and ~13 KB gzipped — written by the pipeline next to the pack. The build
+  copies the **shards** into `dist/data/`, and stops copying the whole pack.
+- **A device fetches one shard per round** — a *random* one, so the cards differ every round —
+  and draws its deck from it (§3 PICK). If the shard does not yield 100 eligible cards (the
+  exclusions), the device fetches another shard, up to **three**; after that the deck is simply
+  shorter, as the rule already says.
+- **`Range` is supported end to end, with a fallback.** The client asks with a `Range` header and
+  **checks the answer**: a `206` that carries `Content-Encoding` is a truncated gzip stream, so
+  it is refused, and the client reads the response stream instead, **stopping as soon as it has
+  enough words** (`reader.cancel()`) — which works on every server, compressed or not. A server
+  that answers a range with an uncompressed body — the LAN server, once **G4** teaches it to —
+  lets the client transfer exactly the bytes it needs.
+
 ### 6.4 Device storage map
 
 | Key | Store | Purpose |
@@ -557,9 +596,10 @@ Notes:
   the room is read from `?room=` and the « À propos » screen is a state value.
 - **Validation:** incoming actions are validated in `reduce()` (phase, player, value ranges).
   No schema library.
-- **Loading:** the app renders first. `wordlist.json` loads in the background and is needed
-  from the first PICK; until it is ready, the Chooser sees a loading message and manual entry.
-  If it fails to load, an error message is shown and only manual entry is offered.
+- **Loading:** the app renders first. The word list loads in the background — **one shard at a
+  time** (§6.3), not the whole pack — and is needed from the first PICK; until it is ready, the
+  Chooser sees a loading message and manual entry. If it fails to load, an error message is
+  shown and only manual entry is offered.
 - **All the user-facing text is French** and lives in one module (`ui/text.ts`), so the wording
   of §4.16 can be reviewed in one place and never drifts between screens.
 - **Debug hook:** the app exposes its current projection as `window.__jdd` (the `View` of
@@ -603,7 +643,7 @@ type State = {
   rendered from a projection fixture and must not crash. No DOM, no jsdom, no snapshots.
 - **The transport is an interface** (§12.1): the in-memory implementation lets a whole game run
   inside a test file, so the end-to-end flow is covered without a network.
-- **The end-to-end harness is outside Vitest** (§12.11): it drives a real Chrome over the
+- **The end-to-end harness is outside Vitest** (§12.12): it drives a real Chrome over the
   Chrome DevTools Protocol and needs a browser, a network and the Nostr relays. It is a script
   (`npm run e2e`), not a unit test.
 - No browser, no component-testing library. Tests run with Vitest, in Node.
@@ -619,7 +659,7 @@ The repo has no `package.json` yet; step **A1** of the build plan (§12) creates
 | `npm test` | Vitest, no browser (§6.7). |
 | `npm run test:watch` | Vitest in watch mode, while developing. |
 | `npm run typecheck` | `tsc --noEmit` — the types are checked without emitting. |
-| `npm run e2e` | The end-to-end harness on a real Chrome (§12.11): `--smoke` for a single page, no argument for the 3-player game. Needs the Internet: it uses the real Nostr/Trystero transport. |
+| `npm run e2e` | The end-to-end harness on a real Chrome (§12.12): `--smoke` for a single page, no argument for the 3-player game. Needs the Internet: it uses the real Nostr/Trystero transport. |
 | `npm run lexique` / `npm run defs` / `npm run preview` | The existing word-pack pipeline (§6.3), unchanged. |
 
 - The `package.json` scripts are the contract of the build plan: every step of §12 ends with
@@ -637,9 +677,11 @@ The repo has no `package.json` yet; step **A1** of the build plan (§12) creates
   LAN server), so a phone fetches it from the same origin as the app.
 - Wake-lock does not work over plain `http://<LAN-IP>` (not a secure context, §4.13): the
   screens may dim during a long round. **Phase 2** fixes this with HTTPS (GitHub Pages).
-- **Word-list caching:** `wordlist.json` is ~1.6 MB. It is fetched once per device and kept in
-  memory; it is *not* stored in `localStorage` (the 5 MB budget is better spent on game state).
-  A device that has already loaded it in this session does not re-download it.
+- **Word-list caching:** the pack is ~1.6 MB, so the device fetches **one shard** (~50 KB raw,
+  ~13 KB gzipped) instead of the whole list (§6.3). It is kept in memory; it is *not* stored in
+  `localStorage` (the 5 MB budget is better spent on game state). A device that has already
+  loaded its shards in this session does not re-download them. Where the server honours `Range`
+  (§6.3), only the bytes the deck needs are transferred.
 - **Fonts:** Patrick Hand is self-hosted as a woff2 under `public/fonts/`, referenced from the
   app's CSS. Caveat is dropped, so only one font file is needed.
 
@@ -697,7 +739,11 @@ the consoles stay clean. That is the **T5** check of §12.2.
 
 **What is not built yet** is the acceptance phase: the plan's own checklist (§12.10), the
 deployment, and the few things the plan leaves to a later time (a custom domain, host
-migration, the wake lock over HTTPS). The next step is **F** (§12.10).
+migration, the wake lock over HTTPS). The next step is **F** (§12.10), then **G** (§12.11).
+
+**The word pack is the next piece of work (§6.3, §12.11).** The pack is 1.6 MB and a round
+needs 100 cards out of 10 548: it becomes shuffled and sharded, the device loads one shard per
+round, and `Range` is supported where the server can serve an uncompressed answer.
 
 **Nothing else is built yet.** This plan describes the whole target application: the
 seven-phase game loop (§6.2) and everything around it. The word pack and its pipeline
@@ -933,7 +979,18 @@ Beyond the plan's file list, phase E also produced: `src/app/wakelock.ts` (the s
 | F1 | A whole game on 3 phones | the acceptance of the local build | **T6**: `npm run build && npm run serve`, open the printed URL on 3 phones, play the loop of §3 |
 | F2 | The edge cases | the refresh mid-round, the sleeping phone, the host leaving | **T6**: trigger each of them on a real phone |
 
-### 12.11 The end-to-end harness
+### 12.11 Phase G — the light pack
+*Environment: T1 for the pack writer and the loader, T3 for the build, T4 for the app.*
+
+| # | Step | Deliverable | How to check it |
+|---|---|---|---|
+| G1 | The pack is shuffled | `scripts/fetch-definitions.mjs` writes the words in a seeded random order and records the seed in `meta.seed`; the rarity order stays in `candidates.json`, where the pipeline needs it | `npm test` → a test on the pack writer: the same seed gives the same order, another seed gives another one, and the first 100 words of the shuffled pack are **not** the 100 rarest |
+| G2 | The shards | the pipeline writes `data/shards/00.json` … `31.json`; the build copies the shards into `dist/data/` and stops copying the whole pack; the harness asks for a shard | `npm test` → the shard writer: the shards partition the pack, no word twice, their union is the pack; `npm run build` then `ls dist/data/shards \| wc -l` = 32 and `test ! -f dist/data/wordlist.json`; `npm run e2e -- --smoke` |
+| G3 | The device loads a shard | `src/app/wordlist.ts` fetches a **random** shard, keeps its words, and asks for another only when the deck would be too short | `npm test` → the loader against a fake `fetch`: one shard gives a drawable deck, and a second shard is asked for only when the exclusions empty the first |
+| G4 | `Range`, and its fallback | the client sends a `Range` header and **refuses a `206` that carries `Content-Encoding`**; the LAN server answers `206` with `Accept-Ranges: bytes`, uncompressed | `npm test` → the loader against a fake `fetch` that answers `206` + `content-encoding` (the client falls back) and one that answers `206` without it (the client uses it); `npm run serve` then `curl -sf -D- -H "Range: bytes=0-1023" http://127.0.0.1:8080/data/shards/00.json \| head -3` shows `206` and `content-range` |
+| G5 | The deck from the loaded words | `src/game/words.ts` draws the deck from the loaded words; the exclusions apply as before; a short load gives a short deck | `npm test` → `words.test.ts`: the deck is 100 cards, the excluded words are absent, a load of 30 words gives 30 cards |
+
+### 12.12 The end-to-end harness
 The unit tests cover the rules; the harness covers **the app as it is really used** — a real
 browser, the real transport, the real relays, and three devices at once.
 
@@ -983,7 +1040,7 @@ be slower than a unit test (relay discovery).
 | that the transport, the state and the screens agree | the visual quality of the theme |
 | that the console stays clean on every device | the behaviour of a phone that falls asleep |
 
-### 12.12 The order, and what comes first
+### 12.13 The order, and what comes first
 The steps are strictly sequential. The first three are the ones to do right away, and they are
 the smallest possible vertical slice — a green test, a green build, nothing else:
 
@@ -999,7 +1056,8 @@ they are the part that can be tested without a phone, a browser or a network.
 The build is not finished until **F1** passes: the app is only a game when a whole party can
 play it on real phones, over a real Wi-Fi network, with the real relay. From **E8** on, the
 automated harness (`npm run e2e`) catches the regressions that would otherwise need three
-phones and a free evening.
+phones and a free evening. **G** (§12.11) comes after **F**: it changes how the word list is
+delivered, so it is done once the game is accepted as it is.
 ---
 
 ## 13. Decision log
@@ -1019,7 +1077,7 @@ Decisions taken during the plan review, recorded so the reasoning is not lost.
 | 9 | **One state, one projection.** The host broadcasts the whole state; there is no wire-level filtering and no `reject` message. What a device may draw is decided by a single pure function `project(state, me)`, run by the host and the guests alike. A join failure is read locally from the state; an action failure is recorded as a per-seat error and comes back with the next broadcast. | §4.2, §6.5, §6.6 |
 | 10 | **The ballot is stored as a list of authors.** `(seatPseudo \| 'real')[]` yields the texts, the author of each option, the index of the real definition and the index of each Writer's own definition — so the own-vote rule is exact on both sides, with no text matching and no second "dictation" payload. | §3 VOTE, §4.3 |
 | 11 | **One exclusion set.** The words played in the current game are already in each device's local history (the DRAFT broadcast adds them), so the excluded set is simply the local `jdd.hist` ∪ the union — no separate "played in this game" list to maintain. | §3 PICK, §4.4 |
-| 12 | **The end-to-end harness drives a real Google Chrome**, over the Chrome DevTools Protocol, with no Playwright and no Puppeteer. Three players = three isolated browser contexts (their own storage partition, their own visible window). The harness reads the phase from a debug hook and clicks by the French labels, so it never scrapes the DOM. | §6.6, §6.7, §12.11 |
+| 12 | **The end-to-end harness drives a real Google Chrome**, over the Chrome DevTools Protocol, with no Playwright and no Puppeteer. Three players = three isolated browser contexts (their own storage partition, their own visible window). The harness reads the phase from a debug hook and clicks by the French labels, so it never scrapes the DOM. | §6.6, §6.7, §12.12 |
 | 13 | **The reducer takes two injected dependencies**, not state fields: `excluded` (the words that may not be played again) and `shuffle` (the one that freezes the 1…N ballot order). The excluded set is *not* in the `State` — the state has exactly the fields of §6.6, and the union lives in the host's memory (§4.4) — and the shuffle must be injectable for the ballot order to be testable at all. | §3 PICK, §4.3, §4.4, §6.6 |
 | 14 | **A `hello` reclaims a seat only if that seat is disconnected; a connected seat means a duplicate and is refused silently.** The plan says both things in two places (§3, §6.5: "refuse the duplicate"; §4.9: "a hello that arrives before the host has noticed the old peer leaving is still a reclaim"). The race of §4.9 is settled at the transport level instead: the guest re-sends `hello` until it sees itself connected, which the protocol already prescribes ("every guest re-sends `hello` when a peer joins"). Always reclaiming would let a newcomer take over a *connected* seat — two devices drawing the same seat — which breaks the table; a lost reconnect is recoverable, that is not. A `hostBack` action covers the host's own reload: on its return, every other seat starts disconnected until its owner's `hello` arrives (§6.5). | §3 LOBBY, §4.9, §4.11, §6.5 |
 | 15 | **The vote index is 0-based inside the state** (the index in the ballot array, which is what `myIdx` and `realIdx` are), and **1-based on the wire** (§6.5: `{ idx }` is 1…N). The conversion happens once, in the protocol layer. | §4.2, §4.3, §6.5 |
@@ -1028,17 +1086,17 @@ Decisions taken during the plan review, recorded so the reasoning is not lost.
 | 18 | **The union is not in the state.** It lives in the host's memory and is broadcast on every seat join (§4.4); the state keeps exactly its §6.6 fields. The excluded set used to validate a `pick` is the host's local history ∪ the union, both kept by the session. | §4.4, §6.6 |
 | 19 | **A guest applies the host's disconnection locally.** When the host's peer leaves, nobody broadcasts anything any more — so the guest marks the host's seat disconnected in its own copy of the state, and the projection stays the single place that decides what is drawn. When the host comes back it broadcasts the state again, which replaces the guest's copy wholesale. | §4.11, §4.12, §4.2 |
 | 20 | **Trystero 0.26 has no "room ready" event any more.** The transport therefore fires it as soon as the room exists, and the guest re-sends its `hello` on every peer join (§4.9) — the application never depends on the exact moment the relays answer. | §4.9, §6.5 |
-| 21 | **The harness launches Chrome on a random free port** (`--remote-debugging-port=0`, the port is read from `DevToolsActivePort`), with a throwaway `--user-data-dir` and `--disable-features=WebRtcHideLocalIpsWithMdns` — without that last flag, the three contexts on one machine hide their local IPs behind the same mDNS name and ICE pairing between them fails. | §12.11 |
+| 21 | **The harness launches Chrome on a random free port** (`--remote-debugging-port=0`, the port is read from `DevToolsActivePort`), with a throwaway `--user-data-dir` and `--disable-features=WebRtcHideLocalIpsWithMdns` — without that last flag, the three contexts on one machine hide their local IPs behind the same mDNS name and ICE pairing between them fails. | §12.12 |
 | 22 | **The room code is shown, and stored with the host's snapshot.** « Créer une salle » draws a fresh four-letter code (§3 LOBBY) and shows it in the Lobby, so the host can share it; a guest joins with the code or with the `?room=CODE` link. The code is part of `jdd.host` (`{ state, code, at }`) because the state itself has no room field (§6.6) — and « Reprendre la salle XXXX » needs it (§4.14). | §3 LOBBY, §4.14, §6.4, §6.6 |
 | 23 | **A duplicate pseudo is refused by the host, and the refusal is recorded as the seat's error.** The state cannot tell "the host accepted me" from "the host refused me": the pseudo *is* the identity, and two devices may carry the same one (§4.9). So the host notes the message for that pseudo (§4.16) — the device that duplicates sees it, and the seated player sees it too until their next action clears it. The client-side check of §3 LOBBY applies wherever the client already has a seat list; the host's check is the guard. | §3 LOBBY, §4.9, §4.16 |
 | 24 | **The projection resolves the caller's seat case-insensitively** (`samePseudo`), because a device may have written « léa » where the seat is called « Léa »; the canonical spelling is used for the error, the vote and the own-definition index. The projection also exposes `myVote` — the caller's own vote — which is their own data, and no one else's. | §3 LOBBY, §3 VOTE, §4.2 |
 | 25 | **The only timer in the app is the join timeout** (§4.6, §4.7): five seconds, in the app shell, showing one message and one button. The failover silently makes the waiting device the host of a fresh room. | §4.6, §4.7 |
-| 26 | **The app side of the debug hook is written in D1**, because the harness needs to read the phase from the very first screen; D6 verifies it (`npm run e2e -- --smoke` reads a non-empty phase from the hook and drives the whole « create a room » flow with it). | §6.6, §12.8, §12.11 |
+| 26 | **The app side of the debug hook is written in D1**, because the harness needs to read the phase from the very first screen; D6 verifies it (`npm run e2e -- --smoke` reads a non-empty phase from the hook and drives the whole « create a room » flow with it). | §6.6, §12.8, §12.12 |
 | 27 | **The storage module is created in D1**, because the Home and the Lobby need `jdd.name`, `jdd.host` and `jdd.room` (§4.14). E3 and E4 add `jdd.hist` and `jdd.draft` to the same module, and E4 adds the round-trip tests. | §6.4, §12.8, §12.9 |
 | 28 | **The room code lives in the URL** (`?room=CODE`), and the app puts it there as soon as a room is opened. It is the only thing that survives a reload: it is what lets the host restore its game from `jdd.host` and the guest rejoin, without anyone clicking anything (§4.9, §4.11, §4.14). The plan has no router (§6.6) — this is not one. | §4.9, §4.11, §4.14, §6.6 |
-| 29 | **The harness counts only the application's errors.** A relay that falls over is logged by the browser as a network error; the application already knows, retries, and says nothing. The check keeps the exceptions and the `console.error` of the app, and ignores the browser's own network log. | §12.2, §12.11 |
+| 29 | **The harness counts only the application's errors.** A relay that falls over is logged by the browser as a network error; the application already knows, retries, and says nothing. The check keeps the exceptions and the `console.error` of the app, and ignores the browser's own network log. | §12.2, §12.12 |
 | 30 | **The wake lock is a request, never a requirement.** It is asked on every device — the phones are face-down on the table (§4.13) — and the refusal is silent: without a secure context (the usual `http://<ip-du-LAN>`), there is simply no lock. The request never throws, and its test says so. | §4.13, §6.8 |
-| 31 | **The 3-player scenario checks §5 exactly.** The harness knows the votes it cast, and the reveal gives the count of each option and its author. It verifies: a vote is worth exactly one point, a fake that received a vote gives a point to its author, a vote for the real definition gives a point to the voter, and the Chooser scores nothing. The final ranking is the sum of the rounds' points. | §5, §12.9, §12.11 |
+| 31 | **The 3-player scenario checks §5 exactly.** The harness knows the votes it cast, and the reveal gives the count of each option and its author. It verifies: a vote is worth exactly one point, a fake that received a vote gives a point to its author, a vote for the real definition gives a point to the voter, and the Chooser scores nothing. The final ranking is the sum of the rounds' points. | §5, §12.9, §12.12 |
 | 32 | **The join panel puts « Annuler » first and the join button on the right.** The button the player pressed (« Rejoindre ») stays where it was: the panel does not move the action under their finger. The row is aligned **to the left**, like every other row of the app. | §4.14 |
 | 33 | **The Chooser sees the fakes live during DRAFT.** It is the one who reads the definitions aloud, so it needs them as they arrive, with their author. This is a change to §4.2 (the fake texts used to be drawn nowhere before DICTATE); the Writers still never see each other's texts, and the Chooser never votes. | §4.2, §4.15 |
 | 34 | **The two actions that break something ask for confirmation**: « Terminer la partie » (the host, which cuts the round in progress) and « Accueil » (the player, which leaves the table). Both are inline confirmations, not a native dialog, and both can be cancelled. | §4.12, §4.14, §4.15 |
@@ -1048,4 +1106,6 @@ Decisions taken during the plan review, recorded so the reasoning is not lost.
 | 38 | **The buttons are drawn, not painted.** No button has a solid blue background any more: the main action is a box with a firm blue line (a thicker one), a secondary action is a written word, and the voted option is a pale wash. The app is a sheet of paper — a block of colour is a web app, not a notebook. The hierarchy is carried by the *shape* of the button, not by a fill, and the touch targets stay at 44 px. | §9 |
 | 39 | **The offer to resume a game sits above everything else**, in a dashed box drawn in another ink, and there is only one offer: the most recent of the host's own game and the last room heard from. It is a different kind of action from creating or joining, and it says so before the player touches anything. | §4.14, §9 |
 | 40 | **The saved game belongs to its room.** `jdd.host` carries the room code (§6.4), and the restore checks it: same room, same host, same hour. The check on the pseudo alone was not enough — the same device, with the same pseudo, creating a *new* room inherited the previous game's state, and its final ranking showed up in a brand-new room where nobody had ever played. The condition is a pure function (`savedGameFor`), covered by the tests and by the harness. | §4.11, §4.14, §6.4 |
-| 40 | **The saved game belongs to its room.** `jdd.host` carries the room code (§6.4), and the restore checks it: same room, same host, same hour. The check on the pseudo alone was not enough — the same device, with the same pseudo, creating a *new* room inherited the previous game's state, and its final ranking showed up in a brand-new room where nobody had ever played. The condition is a pure function (`savedGameFor`), covered by the tests and by the harness. | §4.11, §4.14, §6.4 |
+
+| 41 | **The pack is shuffled, then sharded.** The pack is sorted by increasing frequency, so *any* subset of it would be the rarest words: a device that loaded only the beginning of the file would propose the same hundred words every game. The pack is therefore written in a seeded random order (the seed in `meta.seed`, the rarity order kept in `candidates.json`), and split into 32 shards — a device loads one random shard per round instead of the 1.6 MB pack. | §3 PICK, §6.3, §12.11 |
+| 42 | **`Range` is supported, but only where the representation is uncompressed.** On GitHub Pages a `Range` request comes back with `content-encoding: gzip` and a `content-range` over the *compressed* bytes — a truncated gzip stream, undecodable — and a browser cannot ask for `identity`, `Accept-Encoding` being a forbidden header name. So the client checks the answer and falls back to reading the stream and stopping early; the shards, not the ranges, are what make the transfer small. The LAN server, which serves uncompressed, answers `206` properly. | §6.3, §12.11 |
