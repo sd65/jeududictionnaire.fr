@@ -16,7 +16,7 @@ export const APP_TAGLINE = 'Un mot, des définitions et du bluff';
  * sous la même licence que le jeu — CC BY-SA 4.0, §10).
  */
 export const APP_URL = 'https://jeududictionnaire.fr/';
-export const SOURCE_URL = 'https://github.com/sd65/jeududictionnaire';
+export const SOURCE_URL = 'https://github.com/sd65/jeududictionnaire.fr';
 
 /**
  * L'éditeur du jeu, pour l'identification de l'éditeur du site.

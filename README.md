@@ -19,7 +19,7 @@ code de salle. Les téléphones se parlent **directement entre eux**, sans serve
 de jeu : le transport est pair à pair (WebRTC), et le code de salle est le mot de
 passe de la partie.
 
-Les sources du jeu sont sur GitHub : <https://github.com/sd65/jeududictionnaire>.
+Les sources du jeu sont sur GitHub : <https://github.com/sd65/jeududictionnaire.fr>.
 
 En local, sur un réseau Wi-Fi :
 
