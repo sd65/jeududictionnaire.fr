@@ -9,7 +9,7 @@
 
 export const APP_TITLE = 'Jeu du Dictionnaire';
 
-export const APP_TAGLINE = 'Un mot, des définitions, des bluffers.';
+export const APP_TAGLINE = 'Un mot, des définitions et du bluff';
 
 /** Les messages de §4.16, avec leur origine (§4.2 : local, state ou seat). */
 export const MESSAGES = {

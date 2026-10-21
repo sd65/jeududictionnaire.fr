@@ -158,7 +158,7 @@ export function Home({ onOpen }: HomeProps) {
           <button type="button" className="btn btn--primary" onClick={create}>
             {LABELS.create}
           </button>
-          <button type="button" className="btn btn--quiet" onClick={() => setJoining(true)}>
+          <button type="button" className="btn btn--primary" onClick={() => setJoining(true)}>
             {LABELS.join}
           </button>
         </div>
