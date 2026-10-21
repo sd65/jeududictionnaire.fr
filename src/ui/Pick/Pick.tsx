@@ -91,7 +91,7 @@ export function Pick({ view, dispatch, me, excluded }: ScreenProps) {
       ) : null}
 
       <div className="manual">
-        <button type="button" className="btn" onClick={() => setManual((open) => !open)}>
+        <button type="button" className="btn btn--quiet" onClick={() => setManual((open) => !open)}>
           {LABELS.manualEntry}
         </button>
 

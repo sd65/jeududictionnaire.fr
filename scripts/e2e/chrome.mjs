@@ -113,6 +113,31 @@ export class Page {
   }
 
   /**
+   * Un **vrai tap tactile** sur un bouton, par son libellé.
+   *
+   * Un `element.click()` de JavaScript ne déclenche pas la séquence d'un
+   * doigt : sur un téléphone, le navigateur fabrique `pointerdown`,
+   * `touchstart`, `pointerup`, `touchend`, puis les événements souris. Le
+   * harnais fait les deux, parce que le tap et le clic ne se comportent pas
+   * de la même façon (§12.11).
+   */
+  async tap(label) {
+    const box = await this.evaluate((text) => {
+      const nodes = [...document.querySelectorAll('button, a, [role="button"]')];
+      const target = nodes.find((node) => (node.textContent ?? '').trim() === text);
+      if (!target) return null;
+      const rect = target.getBoundingClientRect();
+      return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+    }, label);
+    if (!box) throw new Error(`Bouton introuvable : « ${label} »`);
+    await this.send('Input.dispatchTouchEvent', {
+      type: 'touchStart',
+      touchPoints: [{ x: box.x, y: box.y }],
+    });
+    await this.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  }
+
+  /**
    * Un bouton portant ce libellé est-il là ?
    *
    * Comme le clic, la recherche se fait par le texte que le joueur voit :
@@ -270,6 +295,13 @@ export class Chrome {
       height: viewport.height,
       deviceScaleFactor: 3,
       mobile: true,
+    });
+
+    // Les appareils sont des téléphones : les événements tactiles sont
+    // activés, et le tap est le geste réel du joueur (§12.11).
+    await page.send('Emulation.setTouchEmulationEnabled', {
+      enabled: true,
+      maxTouchPoints: 5,
     });
 
     // On note ce qui se passe dans la console : le harnais exige qu'elle

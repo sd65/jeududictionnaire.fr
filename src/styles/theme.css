@@ -146,7 +146,7 @@ p {
   transform: rotate(0.4deg);
 }
 
-/* Les boutons : stylo bleu, cibles tactiles d'au moins 44 px. */
+/* Les boutons : une boîte dessinée sur la feuille, pas un aplat de couleur. */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -182,9 +182,21 @@ p {
   cursor: not-allowed;
 }
 
+/* L'action principale : la même boîte, un peu plus appuyée. */
 .btn--primary {
-  color: #fff;
-  background: var(--blue);
+  border-width: 3px;
+}
+
+/* Une action secondaire : un mot écrit, pas une boîte. */
+.btn--quiet {
+  color: var(--blue);
+  background: none;
+  border-color: transparent;
+  text-decoration: underline;
+}
+
+.btn--quiet:hover {
+  color: var(--ink);
 }
 
 .btn--danger {
@@ -192,14 +204,14 @@ p {
   border-color: var(--red);
 }
 
-/* Un bouton discret : il est là, mais il ne crie pas. */
-.btn--quiet {
-  color: var(--ink-soft);
+/* L'offre de reprise : une boîte en pointillés, d'une autre encre. */
+.btn--offer {
+  color: var(--ink);
   background: none;
-  border-color: var(--card-border);
+  border: 2px dashed var(--ink-soft);
 }
 
-.btn--quiet:hover {
+.btn--offer:hover {
   color: var(--blue);
   border-color: var(--blue);
 }
@@ -337,11 +349,6 @@ textarea.input {
   justify-content: space-between;
 }
 
-/* Les actions à droite : le bouton principal garde sa place. */
-.row--end {
-  justify-content: flex-end;
-}
-
 /* La table : la liste des sièges. */
 .seats {
   list-style: none;
@@ -409,15 +416,16 @@ textarea.input {
 .options__line input[type='checkbox'] {
   width: 22px;
   height: 22px;
+  /* La couleur du thème, pas celle du système. */
+  accent-color: var(--blue);
 }
 
-/* Les offres de reprise, sur l'accueil. */
+/* Les offres de reprise, sur l'accueil : au-dessus du reste. */
 .offers {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  padding-top: 8px;
-  border-top: 1px dashed var(--rule);
+  margin-bottom: 16px;
 }
 
 /* La pioche : une carte posée sur la feuille. */
@@ -507,11 +515,12 @@ textarea.input {
   opacity: 0.6;
 }
 
-/* Le vote enregistré. */
+/* Le vote enregistré : un lavis clair, et un trait plus appuyé. */
 .ballot__option--voted {
-  color: #fff;
-  background: var(--blue);
+  color: var(--ink);
+  background: #eaf3fa;
   border-color: var(--blue);
+  border-width: 3px;
   opacity: 1;
 }
 
@@ -597,6 +606,9 @@ textarea.input {
   padding: 2px 12px;
   font-size: 1.35rem;
   line-height: 1;
+  color: var(--ink-soft);
+  background: var(--card);
+  border-color: var(--card-border);
 }
 
 .menu__panel {

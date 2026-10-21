@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { LABELS, MESSAGES } from '../text';
 
 export type MenuProps = {
@@ -26,27 +26,30 @@ export function Menu({ inRoom, onHome, onAbout }: MenuProps) {
   const root = useRef<HTMLDivElement>(null);
 
   // Un clic hors du menu le referme ; la touche Échap aussi.
+  //
+  // On écoute **pointerdown**, et non click : au moment du click, le bouton
+  // pressé peut avoir déjà été remplacé (c'est exactement ce qui arrive
+  // quand on presse « Accueil » : le menu se transforme en confirmation),
+  // et le test « le clic est-il dehors ? » porterait alors sur un bouton
+  // qui n'existe plus — le menu se refermerait, confirmation comprise.
   useEffect(() => {
     if (!open) return;
-    const onClick = (event: MouseEvent) => {
+    const onDown = (event: PointerEvent) => {
       const node = root.current;
       if (node && !node.contains(event.target as Node)) setOpen(false);
     };
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setOpen(false);
     };
-    window.addEventListener('click', onClick);
+    window.addEventListener('pointerdown', onDown, true);
     window.addEventListener('keydown', onKey);
     return () => {
-      window.removeEventListener('click', onClick);
+      window.removeEventListener('pointerdown', onDown, true);
       window.removeEventListener('keydown', onKey);
     };
   }, [open]);
 
-  const toggle = (event: ReactMouseEvent<HTMLButtonElement>) => {
-    // Le clic ne doit pas remonter : sinon il fermerait le menu qu'il vient
-    // d'ouvrir.
-    event.stopPropagation();
+  const toggle = () => {
     setOpen((was) => !was);
     setAsking(false);
   };
@@ -70,7 +73,7 @@ export function Menu({ inRoom, onHome, onAbout }: MenuProps) {
     <div className="menu" ref={root}>
       <button
         type="button"
-        className="btn btn--quiet menu__button"
+        className="btn menu__button"
         aria-label={LABELS.menu}
         aria-expanded={open}
         aria-haspopup="menu"
@@ -88,7 +91,11 @@ export function Menu({ inRoom, onHome, onAbout }: MenuProps) {
                 <button type="button" className="btn btn--primary btn--small" onClick={leave}>
                   {LABELS.yes}
                 </button>
-                <button type="button" className="btn btn--small" onClick={() => setAsking(false)}>
+                <button
+                  type="button"
+                  className="btn btn--quiet btn--small"
+                  onClick={() => setAsking(false)}
+                >
                   {LABELS.cancel}
                 </button>
               </div>

@@ -74,9 +74,40 @@ export function Home({ onOpen }: HomeProps) {
     onOpen(openGuestRoom(room.code, clean));
   };
 
+  /**
+   * L'offre à faire, s'il y en a une.
+   *
+   * La plus récente des deux : une seule à la fois. Deux boutons qui se
+   * ressemblent ne font que confondre (§4.14).
+   */
+  const offer = (() => {
+    const hostAt = canResume && host ? host.at : -1;
+    const roomAt = canComeBack && room ? room.seenAt : -1;
+    if (hostAt < 0 && roomAt < 0) return null;
+    if (hostAt >= roomAt && host) {
+      return { label: LABELS.resume(host.code), go: resume };
+    }
+    if (room) return { label: LABELS.comeback(room.code), go: comeBack };
+    return null;
+  })();
+
   return (
     <section className="screen screen--home">
       <p className="muted">{APP_TAGLINE}</p>
+
+      {/*
+        Les offres de reprise passent **avant** le reste : c'est la seule
+        chose que l'appareil a à dire sur une partie qui existe déjà. Une
+        seule à la fois — deux boutons qui se ressemblent ne font que
+        confondre (§4.14).
+      */}
+      {offer ? (
+        <div className="offers">
+          <button type="button" className="btn btn--offer" onClick={offer.go}>
+            {offer.label}
+          </button>
+        </div>
+      ) : null}
 
       <label className="field">
         <span className="field__label">{LABELS.pseudo}</span>
@@ -113,8 +144,8 @@ export function Home({ onOpen }: HomeProps) {
             « Annuler » d'abord, et l'action principale à droite : le bouton
             pressé reste à la place où l'on l'avait trouvé (§4.14).
           */}
-          <div className="row row--end">
-            <button type="button" className="btn" onClick={() => setJoining(false)}>
+          <div className="row">
+            <button type="button" className="btn btn--quiet" onClick={() => setJoining(false)}>
               {LABELS.cancel}
             </button>
             <button type="button" className="btn btn--primary" onClick={join}>
@@ -127,27 +158,11 @@ export function Home({ onOpen }: HomeProps) {
           <button type="button" className="btn btn--primary" onClick={create}>
             {LABELS.create}
           </button>
-          <button type="button" className="btn" onClick={() => setJoining(true)}>
+          <button type="button" className="btn btn--quiet" onClick={() => setJoining(true)}>
             {LABELS.join}
           </button>
         </div>
       )}
-
-      {canResume && host ? (
-        <div className="offers">
-          <button type="button" className="btn" onClick={resume}>
-            {LABELS.resume(host.code)}
-          </button>
-        </div>
-      ) : null}
-
-      {canComeBack && room ? (
-        <div className="offers">
-          <button type="button" className="btn" onClick={comeBack}>
-            {LABELS.comeback(room.code)}
-          </button>
-        </div>
-      ) : null}
     </section>
   );
 }

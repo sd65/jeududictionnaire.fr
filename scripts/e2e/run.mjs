@@ -83,8 +83,9 @@ async function smoke() {
 
     // Le menu du coin (§4.14) : il est là, il ouvre sur « Accueil » et
     // « À propos », et quitter une partie demande confirmation.
+    // Tout se fait au **tap** : c'est le geste du joueur sur un téléphone.
     const openMenu = async () => {
-      if (!(await page.hasLabel('Accueil'))) await page.clickLabel('☰');
+      if (!(await page.hasLabel('Accueil'))) await page.tap('☰');
     };
 
     await openMenu();
@@ -97,7 +98,7 @@ async function smoke() {
 
     // « À propos » : la feuille passe par-dessus le jeu, et elle attribue les
     // sources avec leurs licences (§10).
-    await page.clickLabel('À propos');
+    await page.tap('À propos');
     await page.waitFor('!!document.querySelector(".overlay__panel")', {
       label: 'la feuille « À propos »',
     });
@@ -105,19 +106,19 @@ async function smoke() {
     if (!about.includes('Lexique') || !about.includes('CC BY-SA 4.0')) {
       throw new Error('« À propos » n’attribue pas les sources');
     }
-    await page.clickLabel('Fermer');
+    await page.tap('Fermer');
     await page.waitFor('!document.querySelector(".overlay__panel")', {
       label: 'la fermeture de « À propos »',
     });
 
     // Quitter la partie demande confirmation.
     await openMenu();
-    await page.clickLabel('Accueil');
+    await page.tap('Accueil');
     await page.waitFor('document.body.textContent.includes("Quitter la partie")', {
       label: 'la confirmation de sortie',
     });
     // On annule : on reste à la table.
-    await page.clickLabel('Annuler');
+    await page.tap('Annuler');
     await page.waitFor('window.__jdd && window.__jdd.isSeated === true', {
       label: 'le retour à la table',
     });
@@ -136,8 +137,8 @@ async function smoke() {
     // Quitter pour de bon : l'appareil revient à l'accueil, et l'URL au
     // racine — sinon un rechargement renverrait dans la partie quittée.
     await openMenu();
-    await page.clickLabel('Accueil');
-    await page.clickLabel('Oui');
+    await page.tap('Accueil');
+    await page.tap('Oui');
     await page.waitFor('!!document.querySelector(".screen--home")', {
       label: 'le retour à l’accueil',
     });

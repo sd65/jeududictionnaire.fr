@@ -79,7 +79,11 @@ export function AdminBar({
             >
               {LABELS.yes}
             </button>
-            <button type="button" className="btn btn--small" onClick={() => setAsking(false)}>
+            <button
+              type="button"
+              className="btn btn--quiet btn--small"
+              onClick={() => setAsking(false)}
+            >
               {LABELS.cancel}
             </button>
           </div>

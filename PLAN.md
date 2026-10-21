@@ -335,6 +335,9 @@ which plain `http://<LAN-IP>` is not — so it is **phase 2** work (§6.8).
 - If a stored room (`jdd.host`) exists and its **last activity** was less than **1 hour** ago, the
   home screen also offers « Reprendre la salle XXXX ». There is no second button for it: « Créer
   une salle » already starts a fresh room, and two buttons that do the same thing only confuse.
+  The offer is the **most recent** of the two (host's own game, or the last room this device
+  heard from) — **one at a time** — and it sits **above everything else**, as a **dashed** box
+  drawn in another ink: it is a different kind of action from creating or joining.
   Last activity means
   the last applied action, phase changes included. A stored room inactive for more than 1 hour
   is discarded at launch, and the home screen is shown without any offer to resume it.
@@ -716,7 +719,9 @@ join replacing spectate (§4.8).
   Caveat is dropped. Minimum text size **18 px** on phones.
 - **Colours:**
   - Title: red pen (`#d8505f`).
-  - Buttons and accents: blue pen (`#1f7ac0`).
+  - Buttons and accents: blue pen (`#1f7ac0`). The buttons are **drawn boxes**, never blocks of
+    colour: the main action is a box with a firm blue line, a secondary action is a **written
+    word** (underlined), and the offer to resume a game is a **dashed** box in another ink.
   - Margin: magenta (`#f28ac6`).
   - Ink text: dark blue (`#2e3d54`). Secondary text: pencil grey (`#7b889c`).
   - Error states: red pen.
@@ -1021,9 +1026,11 @@ Decisions taken during the plan review, recorded so the reasoning is not lost.
 | 29 | **The harness counts only the application's errors.** A relay that falls over is logged by the browser as a network error; the application already knows, retries, and says nothing. The check keeps the exceptions and the `console.error` of the app, and ignores the browser's own network log. | §12.2, §12.11 |
 | 30 | **The wake lock is a request, never a requirement.** It is asked on every device — the phones are face-down on the table (§4.13) — and the refusal is silent: without a secure context (the usual `http://<ip-du-LAN>`), there is simply no lock. The request never throws, and its test says so. | §4.13, §6.8 |
 | 31 | **The 3-player scenario checks §5 exactly.** The harness knows the votes it cast, and the reveal gives the count of each option and its author. It verifies: a vote is worth exactly one point, a fake that received a vote gives a point to its author, a vote for the real definition gives a point to the voter, and the Chooser scores nothing. The final ranking is the sum of the rounds' points. | §5, §12.9, §12.11 |
-| 32 | **The join panel puts « Annuler » first and the join button on the right.** The button the player pressed (« Rejoindre ») stays where it was: the panel does not move the action under their finger. | §4.14 |
+| 32 | **The join panel puts « Annuler » first and the join button on the right.** The button the player pressed (« Rejoindre ») stays where it was: the panel does not move the action under their finger. The row is aligned **to the left**, like every other row of the app. | §4.14 |
 | 33 | **The Chooser sees the fakes live during DRAFT.** It is the one who reads the definitions aloud, so it needs them as they arrive, with their author. This is a change to §4.2 (the fake texts used to be drawn nowhere before DICTATE); the Writers still never see each other's texts, and the Chooser never votes. | §4.2, §4.15 |
 | 34 | **The two actions that break something ask for confirmation**: « Terminer la partie » (the host, which cuts the round in progress) and « Accueil » (the player, which leaves the table). Both are inline confirmations, not a native dialog, and both can be cancelled. | §4.12, §4.14, §4.15 |
 | 35 | **The burger menu is the entry point of « Accueil » and « À propos »**, on every screen, and it never takes the place. « À propos » opens a sheet that comes up from the bottom, over the game — no margin, no gap, and the title well below the app's title. Quitting returns the URL to the root. | §4.14, §10 |
 | 36 | **The app column is at least as tall as the screen** (`min-height: 100dvh`), so the magenta margin runs down to the bottom of the screen on a computer as well as on a phone. | §9 |
 | 37 | **The home screen does not offer a second way to create a room.** The plan had « Nouvelle salle » next to « Reprendre la salle XXXX »; but « Créer une salle » is right there, and two buttons that do the same thing only confuse. Resuming is the offer; creating stays where it was. | §4.14 |
+| 38 | **The buttons are drawn, not painted.** No button has a solid blue background any more: the main action is a box with a firm blue line (a thicker one), a secondary action is a written word, and the voted option is a pale wash. The app is a sheet of paper — a block of colour is a web app, not a notebook. The hierarchy is carried by the *shape* of the button, not by a fill, and the touch targets stay at 44 px. | §9 |
+| 39 | **The offer to resume a game sits above everything else**, in a dashed box drawn in another ink, and there is only one offer: the most recent of the host's own game and the last room heard from. It is a different kind of action from creating or joining, and it says so before the player touches anything. | §4.14, §9 |
