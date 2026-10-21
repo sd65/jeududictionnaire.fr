@@ -58,9 +58,9 @@ export type Action =
 
 export type ReduceDeps = {
   /** Les mots déjà joués, normalisés (§3 PICK). */
-  excluded?: ReadonlySet<string>;
+  excluded?: ReadonlySet<string> | undefined;
   /** Le mélange qui fige l'ordre du bulletin (§4.3). */
-  shuffle?: (items: readonly Author[]) => Author[];
+  shuffle?: ((items: readonly Author[]) => Author[]) | undefined;
 };
 
 const MAX_FAKE_LENGTH = 500;

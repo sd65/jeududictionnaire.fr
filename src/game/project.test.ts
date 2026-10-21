@@ -1,71 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { BUTTONS } from '../ui/text';
+import { gameFixture, HOST, PLAYERS, WRITERS, type FixtureStop } from '../test/fixtures';
 import { reduce } from './reduce';
 import { adminBar, project } from './project';
-import { expectedWriters, initialState, type State } from './state';
 
-const PLAYERS = ['Alice', 'Bob', 'Chloé'];
-const HOST = 'Alice';
-const WRITERS = ['Bob', 'Chloé'];
-
-const keepOrder = (items: readonly (string | 'real')[]) => items.slice();
-
-/** L'état de la partie, arrêté à un point précis. */
-function build(stopAt: string, vocal = true): State {
-  let state = initialState();
-  for (const name of PLAYERS) state = reduce(state, { k: 'hello', name });
-  state = reduce(state, { k: 'setOptions', by: HOST, vocal, tours: 2 });
-  if (stopAt === 'LOBBY') return state;
-
-  state = reduce(state, { k: 'start', by: HOST });
-  if (stopAt === 'PICK') return state;
-
-  state = reduce(state, {
-    k: 'pick',
-    by: state.chooser!,
-    w: 'Éléphant',
-    p: 'n.m.',
-    d: 'Un grand mammifère.',
-  });
-  if (stopAt === 'DRAFT') return state;
-
-  for (const writer of expectedWriters(state)) {
-    state = reduce(state, { k: 'def', by: writer, text: `Fausse de ${writer}` });
-  }
-  if (stopAt === 'DRAFT_SUBMITTED') return state;
-
-  state = reduce(state, { k: 'advance', by: HOST }, { shuffle: keepOrder });
-  if (stopAt === 'DICTATE') return state;
-
-  state = reduce(state, { k: 'valid', by: state.chooser! });
-  if (stopAt === 'VOTE') return state;
-
-  state = reduce(state, { k: 'vote', by: 'Bob', idx: 0 });
-  state = reduce(state, { k: 'vote', by: 'Chloé', idx: 1 });
-  if (stopAt === 'VOTE_VOTED') return state;
-
-  state = reduce(state, { k: 'reveal', by: HOST });
-  if (stopAt === 'REVEAL') return state;
-
-  // Les manches 2 à 6, puis la fin.
-  for (let round = 2; round <= 6; round += 1) {
-    state = reduce(state, { k: 'next', by: HOST });
-    state = reduce(state, {
-      k: 'pick',
-      by: state.chooser!,
-      w: 'Éléphant',
-      p: 'n.m.',
-      d: 'Un grand mammifère.',
-    });
-    for (const writer of expectedWriters(state)) {
-      state = reduce(state, { k: 'def', by: writer, text: `Fausse de ${writer}` });
-    }
-    state = reduce(state, { k: 'advance', by: HOST }, { shuffle: keepOrder });
-    state = reduce(state, { k: 'valid', by: state.chooser! });
-    state = reduce(state, { k: 'reveal', by: HOST });
-  }
-  return reduce(state, { k: 'next', by: HOST });
-}
+const build = gameFixture;
 
 describe('la projection selon la phase', () => {
   it('au LOBBY, personne ne voit de contenu de jeu', () => {
@@ -201,7 +140,7 @@ describe('la projection selon la phase', () => {
 });
 
 describe('la règle unique de vote', () => {
-  const stops = ['LOBBY', 'PICK', 'DRAFT', 'DICTATE', 'VOTE', 'REVEAL', 'END'];
+  const stops: FixtureStop[] = ['LOBBY', 'PICK', 'DRAFT', 'DICTATE', 'VOTE', 'REVEAL', 'END'];
 
   it('vaut phase === VOTE || (phase === DICTATE && vocal), pour tout rédacteur', () => {
     for (const stop of stops) {

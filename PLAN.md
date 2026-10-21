@@ -659,14 +659,17 @@ The threat model is “friends at a table”, not adversarial security:
 
 ## 8. Status
 
-**Phases A and B are done** (§12.5, §12.6). The tooling exists — `package.json` (Vite +
-React + TS + Vitest), the Vite skeleton, the theme CSS, the font, the word list copied into
-`dist/`, the LAN server — and the **pure core of the game** is written and covered by 120
-tests: the state, the reducer (the seven-phase machine), the scoring, the words, and the
-projection.
+**Phases A, B and C are done** (§12.5, §12.6, §12.7). The tooling exists — `package.json`
+(Vite + React + TS + Vitest), the Vite skeleton, the theme CSS, the font, the word list
+copied into `dist/`, the LAN server. The **pure core of the game** is written and covered by
+tests: the state, the reducer (the seven-phase machine), the scoring, the words, the
+projection. The **transport** exists too, in two implementations — one in memory (a whole
+game runs inside a test file) and one real (Trystero over Nostr) — along with the protocol,
+the session, the store, the app shell and the end-to-end harness.
 
-**The app still shows an empty shell**: no screen, no transport, no store. The next step is
-**C1** (§12.7) — the transport interface, then the protocol, then the app shell.
+**The screens are still shells.** They show the right data but do not yet take the player
+anywhere: there is no « Créer une salle », no way to join, no deck, no field to type a fake
+definition in. The next step is **D1** (§12.8).
 
 **Nothing else is built yet.** This plan describes the whole target application: the
 seven-phase game loop (§6.2) and everything around it. The word pack and its pipeline
@@ -837,6 +840,13 @@ are in the decision log (§13, decisions 13 to 17).
 | C6 | The app shell | the screen is chosen from the phase; the admin bar for the host | `npm test` (the server render of every screen); `npm run e2e -- --smoke` → the app boots in a real Chrome, the console is clean |
 | C7 | `scripts/e2e/chrome.mjs` | **the CDP driver**: launch a real Chrome, open isolated contexts, evaluate, click by label, capture the console, screenshot, emulate a phone | `npm run e2e -- --smoke`: the driver launches a real Google Chrome, opens a page, evaluates a value in it and asserts it |
 
+Beyond the plan's file list, phase C also produced: `src/net/session.ts` (what one device
+does in a room — the host reduces and broadcasts, the guest sends intents and draws the last
+state it received), `src/store/useStore.ts` (the React binding), `src/app/session.ts` (the
+link to the current session), the seven screen folders under `src/ui/` (shells — their content
+arrives in phase D), and `src/test/fixtures.ts` (a whole game, prefabricated, for the screens'
+tests). The reasons for the choices are in the decision log (§13, decisions 18 to 21).
+
 ### 12.8 Phase D — the screens
 *Environment: T1 (the server render) + T4 (the real Chrome).*
 
@@ -963,3 +973,7 @@ Decisions taken during the plan review, recorded so the reasoning is not lost.
 | 15 | **The vote index is 0-based inside the state** (the index in the ballot array, which is what `myIdx` and `realIdx` are), and **1-based on the wire** (§6.5: `{ idx }` is 1…N). The conversion happens once, in the protocol layer. | §4.2, §4.3, §6.5 |
 | 16 | **`canVote` keeps the plan's exact expression** — `phase === 'VOTE' \|\| (phase === 'DICTATE' && vocal)` — and is restricted, on top of it, to a seated Writer: the Chooser never votes (§3 VOTE) and a device that is not at the table never votes. A test asserts the expression for every Writer, in every phase, in both modes. | §3 VOTE, §4.2 |
 | 17 | **The host's admin bar is a separate pure derivation** (`adminBar(state)`), living next to the projection. Its rules — when « Démarrer » is enabled, when « Lecture » waits for every fake, when « Révéler » is forced — are game rules, so they belong to the pure core and are tested with it; the screen only draws them. | §4.10, §4.15 |
+| 18 | **The union is not in the state.** It lives in the host's memory and is broadcast on every seat join (§4.4); the state keeps exactly its §6.6 fields. The excluded set used to validate a `pick` is the host's local history ∪ the union, both kept by the session. | §4.4, §6.6 |
+| 19 | **A guest applies the host's disconnection locally.** When the host's peer leaves, nobody broadcasts anything any more — so the guest marks the host's seat disconnected in its own copy of the state, and the projection stays the single place that decides what is drawn. When the host comes back it broadcasts the state again, which replaces the guest's copy wholesale. | §4.11, §4.12, §4.2 |
+| 20 | **Trystero 0.26 has no "room ready" event any more.** The transport therefore fires it as soon as the room exists, and the guest re-sends its `hello` on every peer join (§4.9) — the application never depends on the exact moment the relays answer. | §4.9, §6.5 |
+| 21 | **The harness launches Chrome on a random free port** (`--remote-debugging-port=0`, the port is read from `DevToolsActivePort`), with a throwaway `--user-data-dir` and `--disable-features=WebRtcHideLocalIpsWithMdns` — without that last flag, the three contexts on one machine hide their local IPs behind the same mDNS name and ICE pairing between them fails. | §12.11 |

@@ -53,3 +53,30 @@ site. Voir `scripts/serve-lan.mjs` pour le serveur local.
   usage commercial).
 - **Définitions** : Wiktionnaire (CC BY-SA 4.0) — le jeu embarque une page
   « À propos » avec attribution, conformément à la licence.
+
+---
+
+## Harnais end-to-end (`scripts/e2e/`)
+
+Il pilote un **vrai Google Chrome** au Chrome DevTools Protocol — jamais Chromium, jamais
+Firefox, et jamais le profil de l'utilisateur (le harnais crée son propre répertoire
+jetable). Aucun paquet supplémentaire : le protocole est dans Chrome, et Node a un WebSocket
+dans sa bibliothèque standard.
+
+```bash
+npm run e2e -- --smoke    # une page : l'app démarre, la console est propre
+npm run e2e               # trois joueurs, une partie entière (arrive à E8)
+```
+
+| Fichier | Rôle |
+|---|---|
+| `e2e/cdp.mjs` | le client CDP minimal |
+| `e2e/chrome.mjs` | le pilote : lance Chrome, ouvre des contextes isolés, évalue, clique, capture la console, fait une capture d'écran |
+| `e2e/run.mjs` | le point d'entrée (`--smoke`) |
+
+Le harnais **ne gratte jamais le DOM** : il lit la phase dans `window.__jdd` et clique les
+boutons **par leur libellé français**. Il vérifie donc au passage que le texte du plan est
+bien celui de l'écran.
+
+Trois joueurs = trois `Target.createBrowserContext`, chacun avec son propre stockage et sa
+propre fenêtre visible.
