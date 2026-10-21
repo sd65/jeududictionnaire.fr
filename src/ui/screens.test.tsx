@@ -25,6 +25,7 @@ function propsOf(state: Parameters<typeof project>[0], me: string | null = 'Bob'
     dispatch: () => {},
     me,
     excluded: new Set<string>(),
+    room: 'ABCD',
   };
 }
 

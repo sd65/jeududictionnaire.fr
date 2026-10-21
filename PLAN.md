@@ -659,7 +659,7 @@ The threat model is “friends at a table”, not adversarial security:
 
 ## 8. Status
 
-**Phases A, B, C and D are done** (§12.5, §12.6, §12.7, §12.8). The tooling exists — `package.json`
+**Phases A, B, C, D and E are done** (§12.5, §12.6, §12.7, §12.8, §12.9). The tooling exists — `package.json`
 (Vite + React + TS + Vitest), the Vite skeleton, the theme CSS, the font, the word list
 copied into `dist/`, the LAN server. The **pure core of the game** is written and covered by
 tests: the state, the reducer (the seven-phase machine), the scoring, the words, the
@@ -667,17 +667,21 @@ projection. The **transport** exists too, in two implementations — one in memo
 game runs inside a test file) and one real (Trystero over Nostr) — along with the protocol,
 the session, the store and the end-to-end harness.
 
-**The game is playable.** The screens are all there: the home screen (« Créer une salle »,
-« Rejoindre », the resume offers), the Lobby (the table, the options, the room code), the
-word picker (a deck of a hundred cards, browsed circularly, plus the manual entry), the
-fake definition, the dictation, the ballot, the reveal and the final ranking. The debug hook
-(`window.__jdd`) is exposed, and the harness drives the real Chrome through it: it fills the
-pseudo, creates a room, and checks that the Lobby comes up with a four-letter code.
+**The game is playable, and it survives the real world.** Every screen of §4.15 is there.
+The disconnection blocks the game and the returning player takes their seat back; the host
+can reload and finds the table where it left it; the history of the played words is kept on
+each device, unioned across the table, and clearable; the text typed but not sent is kept
+too. The « À propos » screen attributes the sources and their licences, and the screen stays
+awake — as far as a plain `http://` on a local network allows.
 
-**What is not built yet** is the real world around the game: the disconnection handling, the
-host's reload, the history and its union, the remaining storage keys, the « À propos »
-licences, the wake lock, and the three-player scenario on the real transport. The next step
-is **E1** (§12.9).
+**Three players really play a whole game.** `npm run e2e` opens three isolated Chrome
+contexts, has them find each other through the relay, and plays three rounds on the real
+transport: the game reaches END on the three devices, the points match §5 to the point, and
+the consoles stay clean. That is the **T5** check of §12.2.
+
+**What is not built yet** is the acceptance phase: the plan's own checklist (§12.10), the
+deployment, and the few things the plan leaves to a later time (a custom domain, host
+migration, the wake lock over HTTPS). The next step is **F** (§12.10).
 
 **Nothing else is built yet.** This plan describes the whole target application: the
 seven-phase game loop (§6.2) and everything around it. The word pack and its pipeline
@@ -888,6 +892,8 @@ VOTE) and `src/ui/About/About.tsx`. The reasons for the choices are in the decis
 | E7 | The wake lock | the best-effort request on every device | `npm test`: it never throws when the context is not secure; **T6** on a phone |
 | E8 | The 3-player scenario | `scripts/e2e/three-players.mjs`: 3 players in 3 isolated Chrome contexts play a whole game, on the real transport | `npm run e2e`: the game reaches END on the 3 devices, the scores match §5, no console error — **this is T5** |
 
+Beyond the plan's file list, phase E also produced: `src/app/wakelock.ts` (the screen that stays on), `scripts/e2e/server.mjs` (the test server), `scripts/e2e/player.mjs` (a player seen from the harness) and the `jdd.hist` / `jdd.draft` keys of the storage. The reasons for the choices are in the decision log (§13, decisions 28 to 31).
+
 ### 12.10 Phase F — the acceptance
 *Environment: T6 only. These are the steps a human does, on real phones.*
 
@@ -998,3 +1004,7 @@ Decisions taken during the plan review, recorded so the reasoning is not lost.
 | 25 | **The only timer in the app is the join timeout** (§4.6, §4.7): five seconds, in the app shell, showing one message and one button. The failover silently makes the waiting device the host of a fresh room. | §4.6, §4.7 |
 | 26 | **The app side of the debug hook is written in D1**, because the harness needs to read the phase from the very first screen; D6 verifies it (`npm run e2e -- --smoke` reads a non-empty phase from the hook and drives the whole « create a room » flow with it). | §6.6, §12.8, §12.11 |
 | 27 | **The storage module is created in D1**, because the Home and the Lobby need `jdd.name`, `jdd.host` and `jdd.room` (§4.14). E3 and E4 add `jdd.hist` and `jdd.draft` to the same module, and E4 adds the round-trip tests. | §6.4, §12.8, §12.9 |
+| 28 | **The room code lives in the URL** (`?room=CODE`), and the app puts it there as soon as a room is opened. It is the only thing that survives a reload: it is what lets the host restore its game from `jdd.host` and the guest rejoin, without anyone clicking anything (§4.9, §4.11, §4.14). The plan has no router (§6.6) — this is not one. | §4.9, §4.11, §4.14, §6.6 |
+| 29 | **The harness counts only the application's errors.** A relay that falls over is logged by the browser as a network error; the application already knows, retries, and says nothing. The check keeps the exceptions and the `console.error` of the app, and ignores the browser's own network log. | §12.2, §12.11 |
+| 30 | **The wake lock is a request, never a requirement.** It is asked on every device — the phones are face-down on the table (§4.13) — and the refusal is silent: without a secure context (the usual `http://<ip-du-LAN>`), there is simply no lock. The request never throws, and its test says so. | §4.13, §6.8 |
+| 31 | **The 3-player scenario checks §5 exactly.** The harness knows the votes it cast, and the reveal gives the count of each option and its author. It verifies: a vote is worth exactly one point, a fake that received a vote gives a point to its author, a vote for the real definition gives a point to the voter, and the Chooser scores nothing. The final ranking is the sum of the rounds' points. | §5, §12.9, §12.11 |

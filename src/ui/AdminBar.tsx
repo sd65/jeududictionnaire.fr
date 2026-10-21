@@ -43,7 +43,7 @@ export function AdminBar({
         <button
           key={button.id}
           type="button"
-          className="btn btn--primary"
+          className={button.id === 'end' ? 'btn btn--danger' : 'btn btn--primary'}
           disabled={!button.enabled}
           onClick={() => dispatch(adminAction(button.id, host))}
         >

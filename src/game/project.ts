@@ -12,7 +12,7 @@
  * petite, de l'état.
  */
 
-import { BUTTONS } from '../ui/text';
+import { BUTTONS, MESSAGES } from '../ui/text';
 import { rank, roundPoints, type Standing } from './scoring';
 import {
   expectedWriters,
@@ -229,6 +229,22 @@ export function absenceReason(view: View): Absence {
   if (view.isSeated) return 'none';
   if (view.phase !== 'LOBBY') return 'late';
   return 'waiting';
+}
+
+/**
+ * Qui manque à l'appel ? (§4.12)
+ *
+ * Si c'est l'hôte qui est parti, son message est le sien : « Hôte
+ * déconnecté — en attente de son retour ». Sinon, on nomme le siège
+ * déconnecté.
+ */
+export function waitingMessage(view: View): string | null {
+  const host = view.seats[0];
+  if (host !== undefined && view.connected[host] === false) {
+    return MESSAGES.hostDisconnected;
+  }
+  const absent = view.waitingFor[0];
+  return absent ? MESSAGES.waitingFor(absent) : null;
 }
 export type AdminButtonId = 'start' | 'lecture' | 'reveal' | 'next' | 'end' | 'replay';
 

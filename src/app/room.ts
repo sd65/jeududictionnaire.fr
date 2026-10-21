@@ -5,10 +5,10 @@
  * reste de l'application ne connaît que la session (§6.6).
  */
 
-import { roomFromUrl } from '../game/room';
+import { roomFromUrl, roomToUrl } from '../game/room';
 import { createSession, type Session } from '../net/session';
 import { createTrysteroTransport } from '../net/trystero';
-import { readHost, writeHost, writeRoom } from '../store/storage';
+import { readHistory, readHost, writeHistory, writeHost, writeRoom } from '../store/storage';
 
 export type OpenRoom = {
   /** La session : l'état, le transport, les actions. */
@@ -31,6 +31,21 @@ export function roomInUrl(): string | null {
 }
 
 /**
+ * Le code de la salle passe dans l'URL.
+ *
+ * C'est ce qui permet à un rechargement de retrouver la salle (§4.9,
+ * §4.11) : l'URL est la seule chose qui survive à un rechargement.
+ */
+export function rememberRoomInUrl(code: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.history.replaceState(null, '', roomToUrl(code));
+  } catch {
+    // L'URL ne bougera pas : la salle reste ouverte, c'est tout.
+  }
+}
+
+/**
  * L'hôte ouvre une salle.
  *
  * Si une partie est sauvegardée sur cet appareil et qu'elle appartient à ce
@@ -43,6 +58,9 @@ export function openHostRoom(code: string, name: string): OpenRoom {
     room: code,
     name,
     role: 'host',
+    // Les mots joués sur cet appareil (§4.4).
+    hist: readHistory(),
+    onHistory: (hist) => writeHistory(hist),
     // L'hôte sauvegarde son état après chaque action (§6.6).
     onState: (state) => writeHost(state, code),
   });
@@ -54,6 +72,7 @@ export function openHostRoom(code: string, name: string): OpenRoom {
     session.store.set(stored.state);
   }
 
+  rememberRoomInUrl(code);
   session.start();
   return { session, code, restored: restorable };
 }
@@ -65,10 +84,14 @@ export function openGuestRoom(code: string, name: string): OpenRoom {
     room: code,
     name,
     role: 'guest',
+    // Les mots joués sur cet appareil (§4.4).
+    hist: readHistory(),
+    onHistory: (hist) => writeHistory(hist),
     // L'invité se souvient de la dernière salle entendue (§6.4).
     onState: () => writeRoom(code),
   });
 
+  rememberRoomInUrl(code);
   session.start();
   return { session, code, restored: false };
 }

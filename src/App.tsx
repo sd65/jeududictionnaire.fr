@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useDebugHook } from './app/debug';
-import { openHostRoom } from './app/room';
+import { useWakeLock } from './app/wakelock';
+import { openGuestRoom, openHostRoom, roomInUrl } from './app/room';
 import { setSession, useSession } from './app/session';
 import { absenceReason, project } from './game/project';
 import { newRoomCode } from './game/room';
-import { initialState, type State } from './game/state';
+import { isValidPseudo, initialState, type State } from './game/state';
 import { createStore } from './store/store';
+import { isFresh, readHost, readName, readRoom } from './store/storage';
 import { useStore } from './store/useStore';
 import { About } from './ui/About/About';
 import { AdminBar } from './ui/AdminBar';
@@ -44,6 +46,35 @@ function useJoinTimeout(active: boolean): boolean {
 }
 
 /**
+ * La reprise au démarrage (§4.9, §4.11, §4.14).
+ *
+ * L'URL porte le code de la salle : c'est la seule chose qui survive à un
+ * rechargement. Si l'appareil avait cette salle — comme hôte ou comme invité
+ * — il y retourne, sans que personne ait à rien cliquer.
+ */
+function useRestoreOnLaunch(): void {
+  useEffect(() => {
+    const code = roomInUrl();
+    if (!code) return;
+
+    // L'hôte : il retrouve la partie, et les autres le retrouve (§4.11).
+    const host = readHost();
+    if (host && host.code === code && isFresh(host.at) && host.state.seats.length > 0) {
+      const name = host.state.seats[0] ?? readName();
+      if (isValidPseudo(name)) setSession(openHostRoom(code, name).session);
+      return;
+    }
+
+    // L'invité : il redit bonjour, et reprend sa place (§4.9).
+    const last = readRoom();
+    if (last && last.code === code && isFresh(last.seenAt)) {
+      const name = readName();
+      if (isValidPseudo(name)) setSession(openGuestRoom(code, name).session);
+    }
+  }, []);
+}
+
+/**
  * La coque de l'application (§6.6).
  *
  * L'écran se choisit sur la phase ; la barre d'administration n'apparaît que
@@ -57,6 +88,9 @@ export function App() {
 
   // Le crochet de débogage : le harnais lit la phase ici (§6.6, §12.11).
   useDebugHook(view);
+  useRestoreOnLaunch();
+  // L'écran ne s'éteint pas, sur chaque appareil (§4.13).
+  useWakeLock(session !== null);
 
   const dispatch = session?.dispatch ?? (() => {});
   const excluded = session?.excluded() ?? NO_EXCLUDED;
@@ -68,6 +102,11 @@ export function App() {
   const goHome = () => {
     session?.leave();
     setSession(null);
+  };
+
+  /** « Effacer mon historique de mots » : cet appareil seul (§4.4). */
+  const clearHistory = () => {
+    session?.clearHistory();
   };
 
   /** Le repli de §4.7 : on devient l'hôte d'un nouveau salon, sans mot dire. */
@@ -106,7 +145,9 @@ export function App() {
             dispatch={dispatch}
             me={session.name}
             excluded={excluded}
+            room={session.room}
             onHome={goHome}
+            onClearHistory={clearHistory}
           />
           {view.isHost ? <AdminBar state={state} dispatch={dispatch} /> : null}
         </>

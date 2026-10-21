@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { readDraft, writeDraft } from '../../store/storage';
 import { LABELS } from '../text';
 import type { ScreenProps } from '../types';
 
@@ -13,8 +14,15 @@ const MAX_LENGTH = 500;
  *
  * Le Chooser, lui, ne voit que **qui** a envoyé — jamais les textes (§4.2).
  */
-export function Draft({ view, dispatch, me }: ScreenProps) {
-  const [text, setText] = useState('');
+export function Draft({ view, dispatch, me, room }: ScreenProps) {
+  // Le texte tapé mais pas encore envoyé est gardé sur l'appareil, par
+  // salle : un rechargement ne perd pas la fausse définition (§6.4).
+  const [text, setText] = useState(() => readDraft(room));
+
+  const change = (value: string) => {
+    setText(value);
+    writeDraft(room, value);
+  };
 
   const isWriter = view.isSeated && !view.isChooser;
   const sent = me !== null && view.submitted.some((seat) => seat === me);
@@ -23,6 +31,8 @@ export function Draft({ view, dispatch, me }: ScreenProps) {
   const send = () => {
     if (me === null) return;
     dispatch({ k: 'def', by: me, text });
+    // Envoyé : le brouillon n'a plus lieu d'être (§6.4).
+    writeDraft(room, '');
   };
 
   return (
@@ -39,7 +49,7 @@ export function Draft({ view, dispatch, me }: ScreenProps) {
               rows={4}
               maxLength={MAX_LENGTH}
               value={text}
-              onChange={(event) => setText(event.target.value)}
+              onChange={(event) => change(event.target.value)}
             />
           </label>
           <p className="muted counter">

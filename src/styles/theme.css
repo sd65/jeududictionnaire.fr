@@ -526,3 +526,18 @@ textarea.input {
   letter-spacing: 0.25em;
   color: var(--red);
 }
+
+/* La barre d'administration de l'hôte (§4.15). */
+.admin {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--rule);
+}
+
+/* Le message « en attente de… », au-dessus de l'écran. */
+.waiting {
+  color: var(--red);
+}

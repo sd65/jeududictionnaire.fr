@@ -67,6 +67,7 @@ export const LABELS = {
   newRoom: 'Nouvelle salle',
   createNewRoom: 'Créer un nouveau salon',
   waitingHost: 'En attente de l’hôte…',
+  clearHistory: 'Effacer mon historique de mots',
   close: 'Fermer',
   home: 'Accueil',
   backHome: "Retour à l'accueil",

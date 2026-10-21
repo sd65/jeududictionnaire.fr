@@ -8,7 +8,7 @@ import type { ScreenProps } from '../types';
  * L'hôte règle les options ; les autres les lisent. Le pseudo est la seule
  * chose que l'on change avant de s'asseoir — et il est déjà changé.
  */
-export function Lobby({ view, dispatch }: ScreenProps) {
+export function Lobby({ view, dispatch, onClearHistory }: ScreenProps) {
   const host = view.seats[0] ?? '';
   const absence = absenceReason(view);
 
@@ -77,6 +77,12 @@ export function Lobby({ view, dispatch }: ScreenProps) {
           {LABELS.vocal} : {view.vocal ? 'oui' : 'non'} · {LABELS.tours} : {view.tours}
         </p>
       )}
+
+      {onClearHistory ? (
+        <button type="button" className="btn btn--link" onClick={onClearHistory}>
+          {LABELS.clearHistory}
+        </button>
+      ) : null}
     </section>
   );
 }

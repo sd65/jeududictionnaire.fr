@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { expectedWriters, type Author } from '../game/state';
+import { normalize } from '../game/words';
 import { createSession, type Session } from './session';
 import { createMemoryTransport, flush } from './transport';
 
@@ -310,5 +311,75 @@ describe('le pseudo déjà pris', () => {
     flush();
 
     expect(t.host.store.getSnapshot().errors['Bob']).toBeUndefined();
+  });
+});
+
+describe('le rechargement de l’hôte', () => {
+  it('retrouve la partie, et les invités la reprennent', () => {
+    const t = table();
+    t.host.dispatch({ k: 'setOptions', by: 'Alice', vocal: true, tours: 1 });
+    t.host.dispatch({ k: 'start', by: 'Alice' });
+    flush();
+    playRound(t, { Bob: 0, Chloé: 1 });
+
+    const saved = t.host.store.getSnapshot();
+    expect(saved.phase).toBe('REVEAL');
+
+    // L’onglet de l’hôte se ferme : son pair part.
+    t.host.leave();
+    flush();
+
+    // Les invités le voient : la partie est en pause (§4.11).
+    expect(t.bob.view().waitingFor).toEqual(['Alice']);
+
+    // L’hôte revient : nouvelle session, nouveau pair, état restauré (§4.11).
+    const reloaded = createSession({
+      transport: createMemoryTransport('peer-host-2'),
+      room: t.code,
+      name: 'Alice',
+      role: 'host',
+      shuffle: keepOrder,
+    });
+    reloaded.store.set(saved);
+    reloaded.start();
+    flush();
+
+    // Les invités reditent bonjour à son arrivée (§4.9).
+    flush();
+
+    const state = reloaded.store.getSnapshot();
+    expect(state.connected.Bob).toBe(true);
+    expect(state.connected.Chloé).toBe(true);
+    // La partie reprend exactement où elle en était.
+    expect(state.phase).toBe('REVEAL');
+    expect(state.word).toBe(saved.word);
+    expect(state.scores).toEqual(saved.scores);
+  });
+
+});
+
+describe('l’historique de mots', () => {
+  it('efface l’historique local, sans toucher à celui des autres', () => {
+    const t = table();
+    t.host.dispatch({ k: 'setOptions', by: 'Alice', vocal: true, tours: 1 });
+    t.host.dispatch({ k: 'start', by: 'Alice' });
+    flush();
+    const word = playRound(t);
+
+    expect(t.bob.history()).toContain(word);
+
+    t.bob.clearHistory();
+
+    expect(t.bob.history()).toEqual([]);
+    // L'hôte, lui, garde le mot : c'est lui qui refusera de le faire rejouer
+    // (§4.4). Le mot redevient jouable quand plus personne ne l'a.
+    expect(t.host.history()).toContain(word);
+    expect(t.host.excluded().has(normalize(word))).toBe(true);
+  });
+
+  it('garde l’union des autres appareils', () => {
+    const t = table({ hist: ['Éléphant'] });
+    expect(t.bob.union()).toContain('elephant');
+    expect(t.chloe.union()).toContain('elephant');
   });
 });

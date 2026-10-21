@@ -14,6 +14,7 @@ import { reduce, type Action } from '../game/reduce';
 import { type View, project } from '../game/project';
 import { initialState, isPseudoTaken, samePseudo, type Author, type State } from '../game/state';
 import { excludedSet, normalize } from '../game/words';
+import { HISTORY_CAP } from '../store/storage';
 import { createStore, type Store } from '../store/store';
 import { decode, encode, guestAction, guestMessage, isHostMessage } from './protocol';
 import type { PeerId, Transport } from './transport';
@@ -55,6 +56,8 @@ export type Session = {
   union(): string[];
   /** L'historique local de cet appareil. */
   history(): string[];
+  /** Efface l'historique local : cet appareil seul (§4.4). */
+  clearHistory(): void;
   /** Applique une action : l'hôte la réduit, l'invité l'envoie. */
   dispatch(action: Action): void;
   /** Rejoint la salle. */
@@ -62,9 +65,6 @@ export type Session = {
   /** Quitte la salle. */
   leave(): void;
 };
-
-/** Le plafond de l'historique local, en FIFO (§6.4). */
-const HIST_CAP = 3000;
 
 /** La marque du pair qui est l'hôte, pour un invité. */
 const HOST_PEER = '\u0000';
@@ -101,7 +101,7 @@ export function createSession(options: SessionOptions): Session {
     if (state.phase !== 'DRAFT' || !state.word) return;
     if (hist.includes(state.word)) return;
     hist.push(state.word);
-    if (hist.length > HIST_CAP) hist = hist.slice(-HIST_CAP);
+    if (hist.length > HISTORY_CAP) hist = hist.slice(-HISTORY_CAP);
     excludedCache = null;
     options.onHistory?.([...hist]);
   };
@@ -237,6 +237,11 @@ export function createSession(options: SessionOptions): Session {
     excluded: () => excluded(),
     union: () => [...union],
     history: () => [...hist],
+    clearHistory() {
+      hist = [];
+      excludedCache = null;
+      options.onHistory?.([]);
+    },
 
     dispatch(action) {
       if (role === 'host') {

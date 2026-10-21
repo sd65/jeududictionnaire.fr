@@ -5,7 +5,7 @@ import { Dictate } from './Dictate/Dictate';
 import { Vote } from './Vote/Vote';
 import { Reveal } from './Reveal/Reveal';
 import { End } from './End/End';
-import { absenceReason } from '../game/project';
+import { absenceReason, waitingMessage } from '../game/project';
 import { LABELS, MESSAGES } from './text';
 import type { ScreenProps } from './types';
 
@@ -17,11 +17,13 @@ import type { ScreenProps } from './types';
  */
 export function Screen(props: ScreenProps) {
   const absence = absenceReason(props.view);
+  const waiting = waitingMessage(props.view);
 
   return (
     <>
       {absence === 'late' ? <p className="muted">{MESSAGES.gameInProgress}</p> : null}
       {absence === 'waiting' ? <p className="muted">{LABELS.waitingHost}</p> : null}
+      {waiting ? <p className="muted waiting">{waiting}</p> : null}
       {screenOf(props)}
       {absence !== 'none' && props.onHome ? (
         <button type="button" className="btn" onClick={props.onHome}>

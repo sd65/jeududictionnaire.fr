@@ -112,6 +112,25 @@ export class Page {
     if (!clicked) throw new Error(`Bouton introuvable : « ${label} »`);
   }
 
+  /**
+   * Attend qu'un bouton soit là — et actif — puis le presse.
+   *
+   * Les boutons de l'hôte sont désactivés tant que la partie n'est pas prête
+   * (§4.15) : cliquer dans le vide ne servirait à rien.
+   */
+  async clickLabelWhenReady(label, { timeout = 30000 } = {}) {
+    const wanted = JSON.stringify(label);
+    await this.waitFor(
+      `(() => {
+        const nodes = [...document.querySelectorAll('button')];
+        const target = nodes.find((node) => (node.textContent ?? '').trim() === ${wanted});
+        return !!target && !target.disabled;
+      })()`,
+      { timeout, label: `le bouton « ${label} »` },
+    );
+    await this.clickLabel(label);
+  }
+
   /** Attend qu'une expression devienne vraie. */
   async waitFor(expression, { timeout = 20000, label = expression } = {}) {
     return waitUntil(async () => this.evaluate(expression), { timeout, label });
@@ -256,7 +275,11 @@ export class Chrome {
         );
       }
       if (message.method === 'Log.entryAdded' && message.params.entry.level === 'error') {
-        page.consoleErrors.push(message.params.entry.text);
+        // Seuls les ordres du navigateur comptent : un relais qui tombe ne
+        // dit rien du code de l'application, et l'application le sait déjà.
+        if (message.params.entry.source === 'javascript') {
+          page.consoleErrors.push(message.params.entry.text);
+        }
       }
       if (message.method === 'Network.loadingFailed') {
         page.failedRequests.push(message.params.errorText);

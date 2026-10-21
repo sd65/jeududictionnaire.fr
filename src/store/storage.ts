@@ -122,6 +122,51 @@ export function clearRoom(): void {
   store()?.removeItem(KEYS.room);
 }
 
+/* ----------------------------------------------------------------- jdd.hist */
+
+/** Le plafond de l'historique local, en FIFO (§6.4). */
+export const HISTORY_CAP = 3000;
+
+/** Les mots joués sur cet appareil. */
+export function readHistory(): string[] {
+  const raw = store()?.getItem(KEYS.hist);
+  if (!raw) return [];
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((word): word is string => typeof word === 'string');
+  } catch {
+    return [];
+  }
+}
+
+export function writeHistory(words: readonly string[]): void {
+  store()?.setItem(KEYS.hist, JSON.stringify(words.slice(-HISTORY_CAP)));
+}
+
+/** « Effacer mon historique de mots » : cet appareil seul (§4.4). */
+export function clearHistory(): void {
+  store()?.removeItem(KEYS.hist);
+}
+
+/* ---------------------------------------------------------------- jdd.draft */
+
+/** Le texte non envoyé est rangé par salle (§6.4). */
+function draftKey(room: string): string {
+  return `${KEYS.draft}.${room}`;
+}
+
+/** Le texte tapé mais pas encore envoyé, pour cette salle. */
+export function readDraft(room: string): string {
+  return store()?.getItem(draftKey(room)) ?? '';
+}
+
+export function writeDraft(room: string, text: string): void {
+  const key = draftKey(room);
+  if (text) store()?.setItem(key, text);
+  else store()?.removeItem(key);
+}
+
 /* ------------------------------------------------------------------ commun */
 
 /**

@@ -1,13 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { initialState } from '../game/state';
 import {
+  clearHistory,
   clearHost,
   clearRoom,
+  HISTORY_CAP,
   isFresh,
+  readDraft,
+  readHistory,
   readHost,
   readName,
   readRoom,
   ROOM_TTL,
+  writeDraft,
+  writeHistory,
   writeHost,
   writeName,
   writeRoom,
@@ -132,5 +138,49 @@ describe('sans stockage local', () => {
     expect(() => writeName('Léa')).not.toThrow();
     expect(() => writeHost(initialState(), 'ABCD')).not.toThrow();
     expect(() => clearRoom()).not.toThrow();
+  });
+});
+
+describe('l’historique de mots', () => {
+  it('fait l’aller-retour', () => {
+    expect(readHistory()).toEqual([]);
+    writeHistory(['iguane', 'éléphant']);
+    expect(readHistory()).toEqual(['iguane', 'éléphant']);
+  });
+
+  it('ne garde que les trois mille derniers mots', () => {
+    const words = Array.from({ length: HISTORY_CAP + 50 }, (_, index) => `mot-${index}`);
+    writeHistory(words);
+    const kept = readHistory();
+    expect(kept).toHaveLength(HISTORY_CAP);
+    expect(kept[0]).toBe('mot-50');
+    expect(kept[kept.length - 1]).toBe(`mot-${words.length - 1}`);
+  });
+
+  it('ignore une entrée abîmée', () => {
+    scope.window!.localStorage.setItem('jdd.hist', 'pas du json');
+    expect(readHistory()).toEqual([]);
+  });
+
+  it('se vide', () => {
+    writeHistory(['iguane']);
+    clearHistory();
+    expect(readHistory()).toEqual([]);
+  });
+});
+
+describe('le texte non envoyé', () => {
+  it('fait l’aller-retour, par salle', () => {
+    expect(readDraft('ABCD')).toBe('');
+    writeDraft('ABCD', 'Une fausse définition');
+    expect(readDraft('ABCD')).toBe('Une fausse définition');
+    // Une autre salle n’est pas concernée.
+    expect(readDraft('WXYZ')).toBe('');
+  });
+
+  it('se vide quand on envoie', () => {
+    writeDraft('ABCD', 'Une fausse définition');
+    writeDraft('ABCD', '');
+    expect(readDraft('ABCD')).toBe('');
   });
 });
