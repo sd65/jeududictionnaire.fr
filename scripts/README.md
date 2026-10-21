@@ -19,7 +19,8 @@ node scripts/fetch-definitions.mjs --limit 200    # essai partiel
 node scripts/preview.mjs 20
 ```
 
-(Équivalents npm : `npm run lexique`, `npm run defs`, `npm run preview`.)
+(Équivalents npm : `npm run lexique`, `npm run defs`, `npm run preview` — une fois
+le `package.json` de la racine en place, cf. §6.8 de [`PLAN.md`](../PLAN.md).)
 
 ## Réglages de l'étape 1
 
@@ -42,8 +43,9 @@ interrompue ne refait pas les lots déjà traités.
 flexion rejetés et 2 285 mots sans page Wiktionnaire, listés dans
 `data/no-definition.txt` pour un éventuel complément Littré).
 
-Il est embarqué tel quel dans l'application web (`/data/wordlist.json` est
-servi par le serveur statique) : chaque téléphone le charge en visitant le site.
+Il est embarqué tel quel dans l'application (`/data/wordlist.json` est servi
+en statique à chaque téléphone) : chaque téléphone le charge en visitant le
+site. Voir `scripts/serve-lan.mjs` pour le serveur local.
 
 ## Licences
 

@@ -4,13 +4,12 @@
 **Call My Bluff** / **Balderdash**).
 **Format:** mobile-first web app, played on a handful of phones over a Wi-Fi network,
 with **no game server of our own**. Peer-to-peer via Trystero / Nostr relays (Internet required, see §6.1).
-**Status:** a working prototype exists (see §8); this plan describes the **target** to rebuild
-in React + TypeScript. Decisions are recorded in §12.
+**Status:** the app is **not built yet** — this plan is the specification for what to build.
+Decisions are recorded in §12.
 **Distribution:** no PWA for now. Built as static assets, served from the host's Mac on the local network (§6.1).
 **Source of truth:** this plan (PLAN.md) is the sole authoritative specification.
-Existing code (`_old-prototype/`, `scripts/`, `data/`) is only a reference /
-source of inspiration and must not drive product or architecture decisions
-unless the plan explicitly says so.
+The existing code (`scripts/`, `data/`) is only a source of inspiration and must not drive
+product or architecture decisions unless the plan explicitly says so.
 
 ---
 
@@ -503,7 +502,7 @@ Notes:
 - No component tests. Tests run with Vitest, without a browser.
 
 ### 6.8 Build and local tooling
-The repo has no `package.json` yet; the rebuild creates one at the root.
+The repo has no `package.json` yet; the build creates one at the root.
 
 | Command | What it does |
 |---|---|
@@ -525,6 +524,8 @@ The repo has no `package.json` yet; the rebuild creates one at the root.
 - **Word-list caching:** `wordlist.json` is ~1.6 MB. It is fetched once per device and kept in
   memory; it is *not* stored in `localStorage` (the 5 MB budget is better spent on game state).
   A device that has already loaded it in this session does not re-download it.
+- **Fonts:** Patrick Hand is self-hosted as a woff2 under `public/fonts/`, referenced from the
+  app's CSS. Caveat is dropped, so only one font file is needed.
 
 ---
 
@@ -556,19 +557,16 @@ The threat model is “friends at a table”, not adversarial security:
 
 ## 8. Status
 
-**Built and playable (prototype):** full round loop, deck swiping, per-device word history,
-vocal mode with dictation voting, host dictation panels, guest waiting/failure overlay with
-silent failover, seat reclaim on refresh, scoring + END screen, « À propos » licensing screen,
-paper-cahier visual theme (self-hosted handwriting fonts).
+**Nothing is built yet.** This plan describes the whole target application: the React +
+TypeScript + Vite app (§6.6), the LAN server tooling (§6.8), and the seven-phase game loop
+(§6.2). The word pack and its pipeline (`scripts/`, `data/`) already exist and are ready
+(§6.3).
 
-**Prototype differs from this plan (to be aligned in the rebuild):** timers (removed, §4.6),
-spectate flow (replaced by `reject`, §4.8), disconnection gating (new, §4.12), unique pseudos
-(new, §3), tours-based round count (new, §5), union history (new, §4.4), the own-vote rejection
-(new, §3 VOTE), a disconnected seat blocking Start (new, §3 LOBBY).
-
-**Not yet built (the rebuild):** everything above is the *prototype*; the plan describes the
-target. The React + TypeScript + Vite app (§6.6) and the LAN server tooling (§6.8) do not exist
-yet. The prototype's `_old-prototype/` folder is reference only.
+**Features that are new in this plan** (i.e. not yet implemented anywhere): the seven-phase
+machine with a single code path for both modes (§6.2), the union history exchanged once per
+game (§4.4), tours-based round count (§5), unique pseudos and seat reclaim (§3, §4.9),
+disconnection gating (§4.12), the own-vote rejection (§3 VOTE), a disconnected seat blocking
+Start (§3 LOBBY), and the `reject` flow replacing spectate (§4.8).
 
 ---
 
@@ -581,11 +579,12 @@ yet. The prototype's `_old-prototype/` folder is reference only.
 - **Typography:** **Patrick Hand everywhere** (titles, buttons, body), self-hosted (woff2).
   Caveat is dropped. Minimum text size **18 px** on phones.
 - **Colours:**
-  - Title: red pen (`#d8505f`, from the prototype).
+  - Title: red pen (`#d8505f`).
   - Buttons and accents: blue pen (`#1f7ac0`).
   - Margin: magenta (`#f28ac6`).
   - Ink text: dark blue (`#2e3d54`). Secondary text: pencil grey (`#7b889c`).
   - Error states: red pen.
+  - Sheet: cream `#fbf9f2`, ruled lines `#c3e2f1`, card paper `#fffdf6`, card border `#d9e3ec`.
 - **Responsive:** mobile portrait is the primary target. On larger screens, a single centred
   column of max 480 px, with the sheet visible around it. Touch targets at least **44 px**.
 - **Motion:** sober only: short fades or slides between phases, no looping or decorative animation.
@@ -600,6 +599,10 @@ yet. The prototype's `_old-prototype/` folder is reference only.
   adaptation; the in-app « À propos » screen attributes the source with the licence link and
   the share-alike notice. Any redistribution of the pack must keep this attribution.
 - Trystero: MIT.
+- Font: **Patrick Hand** by Patrick Wagesreiter, **SIL Open Font License 1.1** — self-hosted at
+  `public/fonts/patrick-hand.woff2`, with the licence text alongside it in
+  `public/fonts/OFL.txt` (required by the OFL). The font may be bundled and redistributed with
+  the app.
 - The « À propos » entry point is **mandatory and visible on the Lobby** (small button).
 
 ---
@@ -624,5 +627,5 @@ Decisions taken during the plan review, recorded so the reasoning is not lost.
 | 4 | **A Writer cannot vote for their own fake.** The host rejects it; in normal mode the option is greyed out on the voter's phone. | §3 VOTE, §6.5, §4.16 |
 | 5 | **A disconnected seat blocks Start** (it still counts as seated). | §3 LOBBY, §6.2 |
 | 6 | **The history union is sent once**, at game start and on `hello` — not re-sent per round. During the game each client adds the words it sees broadcast in DRAFT to its own list. | §4.4, §6.5 |
-| 7 | **The data README is subordinate to this plan.** The « 🎴 Nouveau paquet » button and the rarity-sorted deck described in `data/README.md` are prototype leftovers, not plan features: the deck is 100 cards sampled uniformly at random, browsed circularly, with no reshuffle. | §3 PICK, §6.3 |
+| 7 | **The data README is subordinate to this plan.** The « 🎴 Nouveau paquet » button and the rarity-sorted deck described in `data/README.md` are not plan features: the deck is 100 cards sampled uniformly at random, browsed circularly, with no reshuffle. | §3 PICK, §6.3 |
 | 8 | **Tooling is added to the plan**: root `package.json` (Vite + React + TS + Vitest), and a LAN server script (`scripts/serve-lan.mjs`) that serves the built app to the phones over the local network. | §6.8 |
