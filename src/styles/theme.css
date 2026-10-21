@@ -1,0 +1,226 @@
+/* ---------------------------------------------------------------------------
+   Le thème : une feuille de cahier d'école (PLAN.md §9).
+   Crème, lignes bleues horizontales, une marge magenta à droite.
+   Patrick Hand partout, mode clair uniquement, 18 px minimum.
+   --------------------------------------------------------------------------- */
+
+/* La police est auto-hébergée : aucune requête à un tiers. */
+@font-face {
+  font-family: 'Patrick Hand';
+  src: url('/fonts/patrick-hand.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* La palette du plan, §9. */
+  --sheet: #fbf9f2;
+  --rule: #c3e2f1;
+  --margin: #f28ac6;
+  --ink: #2e3d54;
+  --ink-soft: #7b889c;
+  --red: #d8505f;
+  --blue: #1f7ac0;
+  --card: #fffdf6;
+  --card-border: #d9e3ec;
+
+  --shadow: 0 2px 6px rgb(46 61 84 / 14%);
+  /* Hauteur d'une ligne réglée : le texte se pose dessus. */
+  --line: 32px;
+
+  /* Un grain de papier très léger, en SVG inline (aucun fichier à charger). */
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  font-family: 'Patrick Hand', 'Segoe Print', 'Comic Sans MS', cursive;
+  font-size: 18px;
+  line-height: var(--line);
+  color: var(--ink);
+  background-color: var(--sheet);
+  background-image:
+    var(--grain),
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0 calc(var(--line) - 1px),
+      var(--rule) calc(var(--line) - 1px) var(--line)
+    );
+  background-attachment: fixed;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* La colonne unique : 480 px au maximum, la feuille reste visible autour. */
+.app {
+  position: relative;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 20px 28px 64px 20px;
+}
+
+/* La marge magenta, à droite, comme sur un cahier de français. */
+.app::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 16px;
+  width: 2px;
+  background: var(--margin);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.app__title {
+  margin: 0 0 4px;
+  font-size: 2rem;
+  font-weight: 400;
+  line-height: 1.2;
+  color: var(--red);
+}
+
+.app__tagline {
+  margin: 0;
+  color: var(--ink-soft);
+}
+
+h1,
+h2,
+h3 {
+  font-weight: 400;
+  line-height: 1.25;
+  color: var(--red);
+  margin: 0 0 8px;
+}
+
+h1 {
+  font-size: 2rem;
+}
+
+h2 {
+  font-size: 1.5rem;
+}
+
+h3 {
+  font-size: 1.2rem;
+  color: var(--ink);
+}
+
+p {
+  margin: 0 0 12px;
+}
+
+.muted {
+  color: var(--ink-soft);
+}
+
+/* Une feuille posée sur la feuille. */
+.card {
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  background-color: var(--card);
+  background-image: var(--grain);
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  box-shadow: var(--shadow);
+}
+
+.card--tilt {
+  transform: rotate(-0.5deg);
+}
+
+.card--tilt-right {
+  transform: rotate(0.4deg);
+}
+
+/* Les boutons : stylo bleu, cibles tactiles d'au moins 44 px. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 8px 18px;
+  font: inherit;
+  font-size: 1.05rem;
+  color: var(--blue);
+  background: var(--card);
+  border: 2px solid var(--blue);
+  border-radius: 10px;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition:
+    transform 0.12s ease,
+    background-color 0.12s ease;
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn:focus-visible,
+.input:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn--primary {
+  color: #fff;
+  background: var(--blue);
+}
+
+.btn--danger {
+  color: var(--red);
+  border-color: var(--red);
+}
+
+.input {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  font: inherit;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-bottom: 2px solid var(--rule);
+  border-radius: 8px;
+}
+
+/* Le passage d'un écran à l'autre : court, sobre, jamais bouclé. */
+@keyframes jdd-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.screen {
+  animation: jdd-fade-in 0.18s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen {
+    animation: none;
+  }
+}

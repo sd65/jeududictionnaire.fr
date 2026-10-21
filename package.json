@@ -1,0 +1,32 @@
+{
+  "name": "jeududictionnaire",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Jeu du Dictionnaire — jeu de bluff en français, mobile-first, P2P sans serveur",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "tsc --noEmit && vite build",
+    "serve": "node scripts/serve-lan.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "e2e": "node scripts/e2e/run.mjs",
+    "lexique": "node scripts/build-candidates.mjs",
+    "defs": "node scripts/fetch-definitions.mjs",
+    "preview": "node scripts/preview.mjs"
+  },
+  "dependencies": {
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
+  }
+}

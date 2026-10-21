@@ -659,10 +659,15 @@ The threat model is “friends at a table”, not adversarial security:
 
 ## 8. Status
 
-**Nothing is built yet.** This plan describes the whole target application: the React +
-TypeScript + Vite app (§6.6), the LAN server tooling (§6.8), and the seven-phase game loop
-(§6.2). The word pack and its pipeline (`scripts/`, `data/`) already exist and are ready
-(§6.3). The execution order is **§12**.
+**Phase A is done** (§12.5): the tooling exists — `package.json` (Vite + React + TS +
+Vitest), the Vite skeleton, the theme CSS, the font, the word list copied into `dist/`, and
+the LAN server. The app boots, but it is still an empty shell: the game itself is not
+written.
+
+**Nothing else is built yet.** This plan describes the whole target application: the
+seven-phase game loop (§6.2) and everything around it. The word pack and its pipeline
+(`scripts/`, `data/`) already exist and are ready (§6.3). The execution order is **§12**,
+and the next step is **B1** (§12.6).
 
 **Features that are new in this plan** (i.e. not yet implemented anywhere): the seven-phase
 machine with a single code path for both modes (§6.2), the one-state / one-projection model
@@ -789,7 +794,7 @@ When in doubt, this table says what to run before committing.
 | # | Step | Deliverable | How to check it |
 |---|---|---|---|
 | A1 | `package.json` | Vite + React + TS + Vitest, and the scripts of §6.8 | `npm install`, then `npm test` → 1 passing test; `npm run typecheck` → no error; `npm run build` → `dist/` created |
-| A2 | The Vite skeleton | `index.html`, `src/main.tsx`, `src/App.tsx`, the theme CSS, the font, **and the `<meta name="viewport">` tag** (without it the layout is wrong on a phone: the emulated viewport stays at 980 px) | `npm run build` → `dist/index.html` and `dist/fonts/patrick-hand.woff2` both exist; `npm run e2e -- --smoke` → Chrome opens the app, the console is clean, a screenshot lands in `dist/e2e/` |
+| A2 | The Vite skeleton | `index.html`, `src/main.tsx`, `src/App.tsx`, the theme CSS, the font, **and the `<meta name="viewport">` tag** (without it the layout is wrong on a phone: the emulated viewport stays at 980 px) | `npm run build` → `dist/index.html` and `dist/fonts/patrick-hand.woff2` both exist; **from C7 on**, `npm run e2e -- --smoke` → Chrome opens the app, the console is clean, a screenshot lands in `dist/e2e/` |
 | A3 | The word list in the build | `data/wordlist.json` copied to `dist/data/` at build time (a small plugin in `vite.config.ts`) | `npm run build` then `test -f dist/data/wordlist.json`; `npm run serve` then `curl -sf http://127.0.0.1:8080/data/wordlist.json \| head -c 40` |
 | A4 | The LAN server | `scripts/serve-lan.mjs` serves `dist/` and prints the URL to open on the phones | `npm run serve` → `curl` 200 on `/` and on `/data/wordlist.json`, 404 on `/../etc/passwd`; then open the printed URL on a phone |
 

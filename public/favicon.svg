@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Jeu du Dictionnaire">
+  <rect width="64" height="64" rx="9" fill="#fbf9f2" />
+  <g stroke="#c3e2f1" stroke-width="2.5" stroke-linecap="round">
+    <path d="M8 18h48M8 30h48M8 42h48M8 54h34" />
+  </g>
+  <path d="M54 6v52" stroke="#f28ac6" stroke-width="2.5" stroke-linecap="round" />
+  <rect x="22" y="16" width="6" height="32" fill="#d8505f" />
+  <path d="M28 16a16 16 0 0 1 0 32z" fill="#d8505f" />
+</svg>

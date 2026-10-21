@@ -60,7 +60,7 @@ const lanAddresses = () => {
   return out;
 };
 
-createServer(async (req, res) => {
+const handler = async (req, res) => {
   const file = resolvePath(req.url);
   if (!file) {
     res.writeHead(403).end('403');
@@ -84,7 +84,22 @@ createServer(async (req, res) => {
   } catch {
     res.writeHead(404).end('404');
   }
-}).listen(PORT, '0.0.0.0', () => {
+};
+
+const server = createServer(handler);
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(
+      `Le port ${PORT} est déjà utilisé par un autre programme.\n` +
+        `Choisissez-en un autre :  npm run serve -- ${PORT + 1}`,
+    );
+    process.exit(1);
+  }
+  throw err;
+});
+
+server.listen(PORT, '0.0.0.0', () => {
   const lan = lanAddresses();
   console.log(`Jeu servi depuis ${APP_DIR}`);
   console.log(`  - sur ce Mac : http://localhost:${PORT}`);
