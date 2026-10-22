@@ -346,8 +346,18 @@ Host migration is a roadmap item (state `S` is serializable).
 - There is no voluntary quit, and the host cannot remove a player.
 
 ### 4.13 Screen stays awake on every device
-Screen wake-lock is requested on **every** device, not only the host. It needs a secure context,
-which plain `http://<LAN-IP>` is not — so it is **phase 2** work (§6.8).
+Screen wake-lock is requested on **every** device, not only the host, as soon as the device is
+**in a room** (§4.9). The request is a request and nothing more: it never throws, never fails,
+and shows nothing to the player (§13, decision 30).
+
+The browser **releases** the lock as soon as the tab goes to the background, so the request is
+made **again** when the page comes back to the foreground — otherwise the screen would dim
+again after a glance at another application, which is exactly when the player is watching the
+table.
+
+It needs a **secure context**, which plain `http://<LAN-IP>` is not: over the LAN there is no
+lock, and the screens may dim during a long round (§6.8). On the deployed site the context is
+secure — HTTPS (§6.1) — so the lock is taken there.
 
 ### 4.14 Home screen and « Accueil »
 - The home screen offers « Créer une salle » and « Rejoindre » (§3).
@@ -447,12 +457,13 @@ histories (`jdd.hist`) are kept. The END screen has no other button: no « Quitt
   signalling, no manual WebRTC, no LAN WebSocket.
 - Consequence: **Internet access is required** on the phones, even on the same Wi-Fi. This is
   an accepted constraint and must be stated in the lobby / About text.
-- **Hosting (decided):** the app is compiled to static assets (`dist/`, including
-  `data/wordlist.json`) and served from the host's Mac on the local network.
-  The phones open the Mac's LAN address. Not a PWA (no manifest, no service worker) for now.
-- **Phase 2:** hosting on **GitHub Pages** with a custom domain at the root (`/`), which serves HTTPS. This would also make
-  the wake-lock on phones work (§4.13). Until then, plain `http://<LAN-IP>` is not a secure
-  context, so wake-lock is not reliable on phones (§6.8, phase 2).
+- **Hosting:** the app is compiled to static assets (`dist/`, including `data/wordlist.json`) and
+  served by **GitHub Pages** at `https://jeududictionnaire.fr/` — the apex, `www` redirecting
+  to it. **HTTPS is enforced**: `http://` answers 301. The phones open that URL. Not a PWA (no
+  manifest, no service worker) for now.
+- The **LAN server** (`scripts/serve-lan.mjs`) remains, for a game without Internet (§6.8): the
+  phones open the Mac's LAN address. There the context is **not secure**, so the wake lock is
+  simply absent (§4.13).
 - Room code lowercased = the room password.
 - The **host** owns `S` (the authoritative state: phases, secrets, scores, seat list).
   Guests own nothing but the last state they received. All game logic — scoring, reveal,
@@ -701,7 +712,8 @@ The repo has no `package.json` yet; step **A1** of the build plan (§12) creates
 - `data/wordlist.json` is **copied into `dist/` at build time** (or served alongside it by the
   LAN server), so a phone fetches it from the same origin as the app.
 - Wake-lock does not work over plain `http://<LAN-IP>` (not a secure context, §4.13): the
-  screens may dim during a long round. **Phase 2** fixes this with HTTPS (GitHub Pages).
+  screens may dim during a long round. Over the deployed site, which serves HTTPS (§6.1), the
+  lock is taken — and taken again when the page comes back to the foreground.
 - **Word-list caching:** the pack is ~1.6 MB, so the device fetches **one shard** (~50 KB raw,
   ~13 KB gzipped) instead of the whole list (§6.3). It is kept in memory; it is *not* stored in
   `localStorage` (the 5 MB budget is better spent on game state). A device that has already
@@ -755,16 +767,22 @@ The disconnection blocks the game and the returning player takes their seat back
 can reload and finds the table where it left it; the history of the played words is kept on
 each device, unioned across the table, and clearable; the text typed but not sent is kept
 too. The « À propos » screen attributes the sources and their licences, and the screen stays
-awake — as far as a plain `http://` on a local network allows.
+awake on the deployed site (§4.13).
 
 **Three players really play a whole game.** `npm run e2e` opens three isolated Chrome
 contexts, has them find each other through the relay, and plays three rounds on the real
 transport: the game reaches END on the three devices, the points match §5 to the point, and
 the consoles stay clean. That is the **T5** check of §12.2.
 
-**What is not built yet** is the acceptance phase: the plan's own checklist (§12.10), the
-deployment, and the few things the plan leaves to a later time (a custom domain, host
-migration, the wake lock over HTTPS). The next step is **F** (§12.10), then **G** (§12.11).
+**The game is online, over HTTPS.** It is served by **GitHub Pages** at
+`https://jeududictionnaire.fr/` — the apex, `www` redirecting to it — and **HTTPS is
+enforced** (`http://` answers 301). The certificate covers both names, and the sources, the
+licence and the word pack are public too (§10). The screen therefore stays awake on a phone:
+the wake lock is taken in a secure context, and taken again when the page comes back to the
+foreground (§4.13, §12.14).
+
+**What is not built yet** is the acceptance phase — the plan's own checklist, on real phones
+(§12.10) — and the light pack (§12.11).
 
 **The word pack is the next piece of work (§6.3, §12.11).** The pack is 1.6 MB and a round
 needs 100 cards out of 10 548: it becomes shuffled and sharded, the device loads one shard per
@@ -837,7 +855,8 @@ join replacing spectate (§4.8).
 
 ## 11. Open decisions
 
-None. The only remaining work is phase 2 (wake-lock and HTTPS), see §6.8.
+None. The game is online over HTTPS (§6.1, §12.14), and the wake lock works there (§4.13).
+What remains is the acceptance on real phones (§12.10) and the light pack (§12.11).
 
 ---
 
@@ -991,7 +1010,7 @@ VOTE) and `src/ui/About/About.tsx`. The reasons for the choices are in the decis
 | E4 | The local storage | `jdd.draft`, `jdd.name`, `jdd.room` | `npm test` → `src/store/storage.test.ts`: the round-trip through a fake localStorage |
 | E5 | The « À propos » screen | the attribution and the licences (§10) | `npm test` (the server render); `npm run e2e -- --smoke` |
 | E6 | The theme | the paper, the ruled lines, the red and blue pens, the motion | **T6**: `npm run serve`, look at it on a phone — the only step of this phase without an automated check |
-| E7 | The wake lock | the best-effort request on every device | `npm test`: it never throws when the context is not secure; **T6** on a phone |
+| E7 | The wake lock | the best-effort request on every device, and the request again when the page comes back to the foreground | `npm test`: it never throws when the context is not secure, and it takes the lock again on the foreground; `npm run e2e -- --smoke`: the request is counted in a real Chrome; **T6** on a phone, over HTTPS |
 | E8 | The 3-player scenario | `scripts/e2e/three-players.mjs`: 3 players in 3 isolated Chrome contexts play a whole game, on the real transport | `npm run e2e`: the game reaches END on the 3 devices, the scores match §5, no console error — **this is T5** |
 
 Beyond the plan's file list, phase E also produced: `src/app/wakelock.ts` (the screen that stays on), `scripts/e2e/server.mjs` (the test server), `scripts/e2e/player.mjs` (a player seen from the harness) and the `jdd.hist` / `jdd.draft` keys of the storage. The reasons for the choices are in the decision log (§13, decisions 28 to 31).
@@ -1083,6 +1102,22 @@ play it on real phones, over a real Wi-Fi network, with the real relay. From **E
 automated harness (`npm run e2e`) catches the regressions that would otherwise need three
 phones and a free evening. **G** (§12.11) comes after **F**: it changes how the word list is
 delivered, so it is done once the game is accepted as it is.
+
+**H** (§12.14) is the deployment, and it is done: the game is online at
+`https://jeududictionnaire.fr/`, over HTTPS.
+
+---
+
+### 12.14 Phase H — the deployment
+*Environment: the GitHub Actions workflow, and the DNS.*
+
+| # | Step | Deliverable | How to check it |
+|---|---|---|---|
+| H1 | The workflow | `.github/workflows/pages.yml`: checkout with `lfs: true`, Node 24, `npm ci`, build, `upload-pages-artifact`, `deploy-pages` | the run is green on GitHub, and the site serves the new bundle |
+| H2 | The domain | `jeududictionnaire.fr` at the apex, `www` → the apex; the DNS at OVH (the four GitHub addresses, in A and AAAA) | `curl -sIL https://www.jeududictionnaire.fr/` answers 301 to the apex; the certificate covers both names |
+| H3 | HTTPS | "Enforce HTTPS" ticked in the repository settings | `curl -sI http://jeududictionnaire.fr/` answers 301 to `https://`, and `https://` answers 200 |
+| H4 | The wake lock over HTTPS | the lock is taken in a secure context, and taken again when the page comes back to the foreground (§4.13) | `npm run e2e -- --smoke` counts the request in a real Chrome; **T6** on a phone: the screen does not dim during a round |
+
 ---
 
 ## 13. Decision log
@@ -1135,3 +1170,4 @@ Decisions taken during the plan review, recorded so the reasoning is not lost.
 | 41 | **The pack is shuffled, then sharded.** The pack is sorted by increasing frequency, so *any* subset of it would be the rarest words: a device that loaded only the beginning of the file would propose the same hundred words every game. The pack is therefore written in a seeded random order (the seed in `meta.seed`, the rarity order kept in `candidates.json`), and split into 32 shards — a device loads one random shard per round instead of the 1.6 MB pack. | §3 PICK, §6.3, §12.11 |
 | 42 | **`Range` is supported, but only where the representation is uncompressed.** On GitHub Pages a `Range` request comes back with `content-encoding: gzip` and a `content-range` over the *compressed* bytes — a truncated gzip stream, undecodable — and a browser cannot ask for `identity`, `Accept-Encoding` being a forbidden header name. So the client checks the answer and falls back to reading the stream and stopping early; the shards, not the ranges, are what make the transfer small. The LAN server, which serves uncompressed, answers `206` properly. | §6.3, §12.11 |
 | 43 | **The Chooser sees who has voted, nobody else.** When the definitions are not displayed, the votes come in while the Chooser is still dictating: he has to know whether to keep reading or to hand over. The projection therefore exposes `voterSeats` — the seats that have voted, with their state — **to the Chooser alone**, and only while the ballot is visible. The names only: **who** voted, never **what** they voted. The choice stays hidden until REVEAL, and the other players still see nothing but the aggregate count. | §3 VOTE, §4.2, §4.15 |
+| 44 | **The wake lock is taken again when the page comes back.** The browser releases the lock as soon as the tab goes to the background, so a request made once would be lost after the first glance at another application — exactly when the player is watching the table. The lock is therefore requested again on `visibilitychange`, and the request stays best-effort: it never throws, and a refusal is silent. The hook's logic is separated from the DOM, so it is tested without a browser. | §4.13, §12.9, §12.14 |

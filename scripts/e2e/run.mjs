@@ -56,6 +56,21 @@ async function smoke() {
 
   try {
     const page = await chrome.newPage({ viewport: { width: 390, height: 844 } });
+
+    // Avant le démarrage : on note les demandes de réveil d'écran (§4.13).
+    // Le harnais ne gratte pas le DOM — mais il peut instrumenter le
+    // navigateur, comme il instrumente déjà le stockage local.
+    await page.send('Page.addScriptToEvaluateOnNewDocument', {
+      source: `try {
+        window.__jddWakeLock = 0;
+        const api = navigator.wakeLock;
+        if (api && api.request) {
+          const request = api.request.bind(api);
+          api.request = (type) => { window.__jddWakeLock += 1; return request(type); };
+        }
+      } catch (e) {}`,
+    });
+
     await page.goto(url);
 
     // L'application a rendu quelque chose.
@@ -111,6 +126,14 @@ async function smoke() {
     const code = await page.text('.room__code');
     if (!/^[A-Z]{4}$/.test(code)) {
       throw new Error(`code de salle inattendu : « ${code} »`);
+    }
+
+    // Le réveil de l'écran est demandé **dans une salle**, sur chaque
+    // appareil (§4.13). Sur 127.0.0.1, le contexte est sécurisé : la
+    // demande part — et elle ne doit surtout pas bruiter la console.
+    const wakeLock = await page.evaluate('window.__jddWakeLock ?? -1');
+    if (wakeLock < 1) {
+      throw new Error('le réveil d’écran n’a pas été demandé');
     }
 
     // Le pack de mots est servi depuis la même origine que l'application
@@ -193,6 +216,7 @@ async function smoke() {
     console.log(`  · viewport   : ${width} px`);
     console.log(`  · phase      : ${phase} → ${seatedPhase}`);
     console.log(`  · salle      : ${code}`);
+    console.log(`  · réveil     : ${wakeLock} demande(s) d’éveil d’écran`);
     console.log(`  · sortie     : l’accueil, URL « ${finalUrl} »`);
     console.log(`  · console    : propre`);
     console.log(`  · capture    : ${file}`);

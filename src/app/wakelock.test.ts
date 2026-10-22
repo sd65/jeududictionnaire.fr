@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { requestWakeLock, type WakeLock } from './wakelock';
+import { keepScreenAwake, requestWakeLock, type WakeLock } from './wakelock';
 
 const scope = globalThis as { navigator?: unknown };
 
@@ -56,5 +56,108 @@ describe('la demande d’éveil de l’écran', () => {
     } finally {
       scope.navigator = real;
     }
+  });
+});
+
+/** Un environnement de test : la page, et les demandes de verrou. */
+function fakePage() {
+  const locks: WakeLock[] = [];
+  const released: number[] = [];
+  const listeners: (() => void)[] = [];
+  let visible = true;
+
+  return {
+    locks,
+    released,
+    /** La page passe en arrière-plan, puis revient. */
+    setVisible(next: boolean) {
+      visible = next;
+      if (!visible) {
+        // Le navigateur rend le verrou quand l'onglet passe en arrière-plan.
+        for (const lock of locks) void lock.release();
+      }
+      for (const listener of listeners) listener();
+    },
+    env: {
+      request: async () => {
+        const index = locks.length;
+        const lock: WakeLock = {
+          release: () => {
+            released.push(index);
+            return Promise.resolve();
+          },
+        };
+        locks.push(lock);
+        return lock;
+      },
+      isVisible: () => visible,
+      onVisibilityChange: (listener: () => void) => {
+        listeners.push(listener);
+        return () => {
+          const index = listeners.indexOf(listener);
+          if (index >= 0) listeners.splice(index, 1);
+        };
+      },
+    },
+  };
+}
+
+describe('le verrou d’éveil', () => {
+  it('demande le verrou, et le rend à la fin', async () => {
+    const page = fakePage();
+    const stop = keepScreenAwake(page.env);
+    await Promise.resolve();
+
+    expect(page.locks).toHaveLength(1);
+    expect(page.released).toEqual([]);
+
+    stop();
+    await Promise.resolve();
+    expect(page.released).toEqual([0]);
+  });
+
+  it('reprend le verrou quand la page redevient visible', async () => {
+    const page = fakePage();
+    const stop = keepScreenAwake(page.env);
+    await Promise.resolve();
+
+    // L'onglet passe en arrière-plan : le navigateur rend le verrou.
+    page.setVisible(false);
+    await Promise.resolve();
+    expect(page.locks).toHaveLength(1);
+    expect(page.released).toEqual([0]);
+
+    // La page revient : le verrou est redemandé.
+    page.setVisible(true);
+    await Promise.resolve();
+    expect(page.locks).toHaveLength(2);
+
+    stop();
+    await Promise.resolve();
+    expect(page.released).toEqual([0, 1]);
+  });
+
+  it('ne redemande rien tant que la page est en arrière-plan', async () => {
+    const page = fakePage();
+    const stop = keepScreenAwake(page.env);
+    await Promise.resolve();
+
+    page.setVisible(false);
+    page.setVisible(false);
+    await Promise.resolve();
+    expect(page.locks).toHaveLength(1);
+
+    stop();
+  });
+
+  it('ne demande rien si la demande échoue', async () => {
+    const stop = keepScreenAwake({
+      request: () => Promise.resolve(null),
+      isVisible: () => true,
+      onVisibilityChange: () => () => {},
+    });
+    await Promise.resolve();
+    // Rien à rendre, et surtout : aucune exception.
+    expect(() => stop()).not.toThrow();
   });
 });
