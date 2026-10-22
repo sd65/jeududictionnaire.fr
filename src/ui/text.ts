@@ -9,7 +9,7 @@
 
 export const APP_TITLE = 'Jeu du Dictionnaire';
 
-export const APP_TAGLINE = 'Un mot, des définitions et du bluff';
+export const APP_TAGLINE = 'Un mot, des définitions et du bluff !';
 
 /**
  * L'adresse du jeu en ligne, et le dépôt de ses sources (le code est publié
