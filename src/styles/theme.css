@@ -603,12 +603,28 @@ textarea.input {
 }
 
 .menu__button {
-  padding: 2px 12px;
-  font-size: 1.35rem;
-  line-height: 1;
+  padding: 0 11px;
   color: var(--ink-soft);
   background: var(--card);
   border-color: var(--card-border);
+}
+
+/*
+ * Le « burger » : trois traits dessinés, au milieu exact du bouton.
+ *
+ * Un caractère (« ☰ ») sort de la police de repli, dont les metrics ne
+ * sont pas celles du bouton : il tombe à côté. Ici, la boîte du dessin
+ * fait la hauteur du bouton, et les traits sont à equalité autour du
+ * centre.
+ */
+.menu__icon {
+  display: block;
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
 }
 
 .menu__panel {

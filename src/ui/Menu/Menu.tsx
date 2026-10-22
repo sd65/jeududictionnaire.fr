@@ -79,7 +79,20 @@ export function Menu({ inRoom, onHome, onAbout }: MenuProps) {
         aria-haspopup="menu"
         onClick={toggle}
       >
-        ☰
+        {/*
+          Le « burger », dessiné et non tapé (§9).
+
+          Un caractère (« ☰ ») vient de la police de repli : ses metrics ne
+          sont pas celles du bouton, et il tombe à côté du centre. Les
+          traits, eux, sont dessinés à la main : ils tombent au milieu, sur
+          tous les écrans.
+
+          Le titre garde le glyphe : le harnais retrouve le bouton par lui.
+        */}
+        <svg className="menu__icon" viewBox="0 0 24 24" aria-hidden="true">
+          <title>☰</title>
+          <path d="M4 7h16M4 12h16M4 17h16" />
+        </svg>
       </button>
 
       {open ? (
