@@ -102,7 +102,12 @@ export const LABELS = {
 
   /* Le choix du mot (§3 PICK) */
   pickTitle: 'Choisis un mot',
-  waitingPick: 'Le Chooser choisit un mot…',
+  /**
+   * Ce que les autres voient pendant le choix. On nomme le joueur par son
+   * pseudo plutôt que par un rôle : « Alice est en train de choisir un mot… ».
+   */
+  waitingPick: (pseudo: string) =>
+    pseudo ? `${pseudo} est en train de choisir un mot…` : 'Un joueur est en train de choisir un mot…',
   choose: '✓ Choisir ce mot',
   previousCard: '‹',
   nextCard: '›',

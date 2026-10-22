@@ -31,6 +31,12 @@ export type View = {
   isHost: boolean;
   isChooser: boolean;
   /**
+   * Le pseudo du Chooser — pour le nommer dans les messages (« Alice est en
+   * train de choisir un mot… »). Ce n'est pas un secret : l'état voyage tel
+   * quel, et le siège du Chooser est public.
+   */
+  chooserPseudo: string | null;
+  /**
    * Le vote est accepté exactement quand le bulletin est visible à ce
    * joueur (§3 VOTE). La formule est celle du plan :
    * `phase === 'VOTE' || (phase === 'DICTATE' && vocal)`. Le Chooser et un
@@ -153,6 +159,7 @@ export function project(state: State, me: string | null): View {
       isSeated: false,
       isHost: false,
       isChooser: false,
+      chooserPseudo: state.chooser,
       canVote: false,
       showTexts: false,
       optionsCount: 0,
@@ -188,6 +195,7 @@ export function project(state: State, me: string | null): View {
     isSeated: true,
     isHost,
     isChooser,
+    chooserPseudo: state.chooser,
     canVote,
     showTexts,
     optionsCount: showNumbers ? state.ballot.length : 0,

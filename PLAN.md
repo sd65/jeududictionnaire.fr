@@ -190,7 +190,8 @@ on the wire** (§6.5): the state travels as it is, and each client draws from it
 That is why the projection must be a pure function of `(S, me)` — it is the unit the tests cover
 (§6.7).
 
-It returns: `phase`; `isHost` / `isChooser` / `isSeated`; `canVote` (= `phase === 'VOTE' ||
+It returns: `phase`; `isHost` / `isChooser` / `isSeated`; `chooserPseudo` (the pseudo of the
+Chooser, to name the player in the messages); `canVote` (= `phase === 'VOTE' ||
 (phase === 'DICTATE' && vocal)`, the one voting invariant, §3 VOTE); `showTexts` (= `phase ===
 'VOTE' && !vocal`); `options` (the N definitions in the stable ballot order); `authors` (the
 author of each option); `myIdx` (the index of the caller's own definition, or −1); `realIdx`
@@ -360,10 +361,16 @@ command** but the way out of a stuck game: it is therefore **small and discreet*
 for confirmation** — cutting the round in progress loses its points. The same goes for « Accueil »
 in the burger menu: leaving a game in progress asks first (§4.14).
 
+**The screens name the players, never the roles.** No French word says everything the Chooser
+does — picks the word, holds the true definition, dictates it, never votes — and a role label on
+a phone screen is cold anyway. The screens therefore call a player by their **pseudo**: « <pseudo>
+est en train de choisir un mot… ». The role names (Chooser, Writer) stay in the plan and in the
+code, where they name a rule, not a person.
+
 | Phase | Host buttons | Chooser | Writer | Other players |
 |---|---|---|---|---|
 | LOBBY | « Démarrer » (enabled at ≥ 3 seated **and** all connected), options (« Mode vocal seul », « Nombre de tours ») | seat list | seat list | seat list, options read-only |
-| PICK | none | swipeable deck, « ✓ Choisir ce mot », manual entry | « Le Chooser choisit un mot » | same waiting text |
+| PICK | none | swipeable deck, « ✓ Choisir ce mot », manual entry | « <pseudo> est en train de choisir un mot… » | same waiting text |
 | DRAFT | « Lecture » (enabled when every Writer has submitted) | list of who has submitted, **and the fakes as they arrive** | 500-character field, « Envoyer », locked after sending | word shown |
 | DICTATE | none (the Chooser validates) | dictation card, « Passer au vote — tout le monde a entendu » | normal: waiting screen; vocal: numbered vote buttons | same as Writer |
 | VOTE | « Révéler » (enabled when every Writer has voted; force reveal always available) | dictation card stays, may repeat a definition | normal: numbered definitions and vote; vocal: numbered vote buttons | same as Writer |

@@ -96,12 +96,17 @@ describe('le choix du mot', () => {
     const other = renderToString(<Screen {...propsOf(state, 'Bob')} />);
 
     expect(chooser).toContain('Choisis un mot');
-    expect(other).toContain('Le Chooser choisit un mot');
+    expect(other).toContain('Alice est en train de choisir un mot');
   });
 
   it('ne montre pas le titre « Choisis un mot » aux autres', () => {
     const html = renderToString(<Screen {...propsOf(gameFixture('PICK'), 'Bob')} />);
     expect(html).not.toContain('Choisis un mot');
+  });
+
+  it('nomme le joueur par son pseudo, pas par un rôle', () => {
+    const html = renderToString(<Screen {...propsOf(gameFixture('PICK'), 'Bob')} />);
+    expect(html).not.toContain('Chooser');
   });
 });
 

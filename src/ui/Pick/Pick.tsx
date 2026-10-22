@@ -29,9 +29,10 @@ export function Pick({ view, dispatch, me, excluded }: ScreenProps) {
 
   if (!view.isChooser) {
     // Les autres attendent : un seul mot, pas de titre à moitié vide (§4.15).
+    // Le joueur est nommé par son pseudo, pas par un rôle.
     return (
       <section className="screen screen--pick">
-        <p className="muted">{LABELS.waitingPick}</p>
+        <p className="muted">{LABELS.waitingPick(view.chooserPseudo ?? '')}</p>
       </section>
     );
   }
