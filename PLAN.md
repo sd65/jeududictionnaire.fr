@@ -70,10 +70,10 @@ they are constraints, not implementation details.
   the host checks it again when the `hello` arrives and refuses the duplicate. A reclaim of a
   disconnected seat is not a duplicate (§4.9).
 - The host configures the game for the whole table:
-  - **« Afficher à tous les définitions pendant le vote »** (§4.5), **unchecked** by default: the
-    definitions are heard, never read — the phones show numbers only (§4.5).
   - **« Nombre de tours »**, default **2**, minimum **1**, no upper limit. One tour = every seated player chooses once.
     Total rounds = tours × seated players (fixed at start, see §4.1).
+  - **« Afficher à tous les définitions pendant le vote »** (§4.5), **unchecked** by default: the
+    definitions are heard, never read — the phones show numbers only (§4.5).
 - **Start** is disabled until **≥ 3 seated players** *and* **every seated player is connected**.
   A disconnected seat counts as seated (it keeps its place) but blocks the start: the game
   would be stuck at the first phase (§4.12).
@@ -397,7 +397,7 @@ code, where they name a rule, not a person.
 
 | Phase | Host buttons | Chooser | Writer | Other players |
 |---|---|---|---|---|
-| LOBBY | « Démarrer » (enabled at ≥ 3 seated **and** all connected), options (« Afficher à tous les définitions pendant le vote », « Nombre de tours ») | seat list | seat list | seat list, options read-only |
+| LOBBY | « Démarrer » (enabled at ≥ 3 seated **and** all connected), the options card (« Options de la partie »: « Nombre de tours », then « Afficher à tous les définitions pendant le vote ») | seat list | seat list | seat list, options read-only |
 | PICK | none | swipeable deck, « ✓ Choisir ce mot », manual entry | « <pseudo> est en train de choisir un mot… » | same waiting text |
 | DRAFT | « Lecture » (enabled when every Writer has submitted) | list of who has submitted, **and the fakes as they arrive** | 500-character field, « Envoyer », locked after sending | word shown |
 | DICTATE | none (the Chooser validates) | dictation card, « Passer au vote — tout le monde a entendu », **the list of those who have voted** (definitions not displayed) | definitions displayed: waiting screen; not displayed: numbered vote buttons | same as Writer |

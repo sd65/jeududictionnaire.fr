@@ -404,11 +404,31 @@ textarea.input {
 
 /* Les options de l'hôte. */
 .options {
+  display: flex;
+  flex-direction: column;
+  /* Un peu d'air entre les deux options : environ 1 EM. */
+  gap: 1em;
   padding: 8px 12px;
   margin-bottom: 16px;
   background: var(--card);
   border: 1px solid var(--card-border);
   border-radius: 6px;
+}
+
+/* Une option et son explication : un bloc à part entière. */
+.options__group {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Le petit titre de la carte des options. */
+.options__title {
+  margin: 0;
+}
+
+/* Les options des autres joueurs : en lecture seule. */
+.options__summary {
+  margin: 0;
 }
 
 .options__line {

@@ -91,6 +91,13 @@ describe('le salon', () => {
     expect(html).toContain('Décoché : on ne voit que des numéros');
   });
 
+  it('met le nombre de tours avant l’option des définitions', () => {
+    const html = renderToString(<Screen {...propsOf(gameFixture('LOBBY'), HOST)} />);
+    expect(html.indexOf('Nombre de tours')).toBeLessThan(
+      html.indexOf('Afficher à tous les définitions pendant le vote'),
+    );
+  });
+
   it('signale une partie déjà commencée pour un appareil en retard', () => {
     const html = renderToString(<Screen {...propsOf(gameFixture('PICK'), 'Zoé')} />);
     expect(html).toContain('Partie en cours');

@@ -94,6 +94,8 @@ export const LABELS = {
 
   /* Le salon (§3 LOBBY) */
   table: 'La table',
+  /** Le titre de la carte des options de la partie (§3 LOBBY). */
+  optionsTitle: 'Options de la partie',
   /** L'option d'affichage des définitions pendant le vote (§4.5). */
   showDefinitions: 'Afficher à tous les définitions pendant le vote',
   /** Ce que vaut l'option ci-dessus quand elle est décochée (§4.5). */
