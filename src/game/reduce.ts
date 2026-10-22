@@ -34,7 +34,7 @@ export type Action =
    */
   | { k: 'duplicate'; by: string }
   /** L'hôte change les options de la table (§3 LOBBY). */
-  | { k: 'setOptions'; by: string; vocal: boolean; tours: number }
+  | { k: 'setOptions'; by: string; showDefinitions: boolean; tours: number }
   /** L'hôte lance la partie : LOBBY → PICK. */
   | { k: 'start'; by: string }
   /** Le Chooser choisit un mot : PICK → DRAFT. */
@@ -43,7 +43,7 @@ export type Action =
   | { k: 'def'; by: string; text: string }
   /** Le Chooser déclare que tout le monde a entendu : DICTATE → VOTE. */
   | { k: 'valid'; by: string }
-  /** Un joueur vote (VOTE, et DICTATE en mode vocal). */
+  /** Un joueur vote (VOTE, et DICTATE quand les définitions ne sont pas affichées). */
   | { k: 'vote'; by: string; idx: number }
   /** L'hôte fait passer la dictation : DRAFT → DICTATE. */
   | { k: 'advance'; by: string }
@@ -163,7 +163,7 @@ export function reduce(state: State, action: Action, deps: ReduceDeps = {}): Sta
     case 'setOptions': {
       if (state.phase !== 'LOBBY' || !isHost(action.by)) return state;
       const tours = Math.max(1, Math.floor(action.tours));
-      return { ...state, vocal: action.vocal, tours };
+      return { ...state, showDefinitions: action.showDefinitions, tours };
     }
 
     case 'start': {
@@ -267,8 +267,9 @@ export function reduce(state: State, action: Action, deps: ReduceDeps = {}): Sta
 
     case 'vote': {
       // Le vote est accepté exactement quand le bulletin est visible à ce
-      // joueur : une seule expression, dans les deux modes (§3 VOTE, §4.2).
-      const visible = state.phase === 'VOTE' || (state.phase === 'DICTATE' && state.vocal);
+      // joueur : une seule expression, dans les deux réglages (§3 VOTE, §4.2).
+      const visible =
+        state.phase === 'VOTE' || (state.phase === 'DICTATE' && !state.showDefinitions);
       if (!visible) return state;
       if (action.by === state.chooser) return state;
       if (seatIndex(state, action.by) < 0) return state;

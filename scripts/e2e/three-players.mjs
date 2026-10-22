@@ -118,7 +118,16 @@ export async function threePlayers({ headless = false, url, log = console.log, s
     log('  · les trois joueurs sont à table');
 
     /* ------------------------------------------------------------- la partie */
-    await alice.type('Nombre de tours', String(TOURS));
+    /*
+     * Le nombre de tours : ce sont deux boutons, « un tour de moins », « un
+     * tour de plus », pas un champ à remplir (§3 LOBBY). Le harnais presse ce
+     * que le joueur voit : le « − » (§12.11).
+     */
+    for (;;) {
+      const view = await alice.view();
+      if (!view || view.tours <= TOURS) break;
+      await alice.press('−');
+    }
     await alice.press('Démarrer');
     await alice.waitForPhase('PICK');
 

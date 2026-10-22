@@ -22,7 +22,14 @@ export type State = {
   chooser: string | null;
   round: number;
   tours: number;
-  vocal: boolean;
+  /**
+   * Les définitions sont-elles affichées aux joueurs pendant le vote (§4.5) ?
+   *
+   * `false` — le défaut — : les téléphones ne montrent que des numéros, et le
+   * vote est ouvert dès la dictée. `true` : les définitions s'affichent au
+   * VOTE, et le vote n'ouvre qu'à ce moment-là.
+   */
+  showDefinitions: boolean;
   word: string;
   category: string;
   realDef: string;
@@ -44,7 +51,7 @@ export function initialState(): State {
     chooser: null,
     round: 0,
     tours: 2,
-    vocal: true,
+    showDefinitions: false,
     word: '',
     category: '',
     realDef: '',

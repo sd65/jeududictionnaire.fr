@@ -312,11 +312,6 @@ p {
   text-align: center;
 }
 
-.input--number {
-  width: 5rem;
-  text-align: center;
-}
-
 textarea.input {
   resize: vertical;
   line-height: 1.4;
@@ -397,6 +392,16 @@ textarea.input {
   border-color: var(--red);
 }
 
+/* La liste des votants, pour le Chooser (§3 VOTE). */
+.voters {
+  margin-top: 16px;
+}
+
+.badge--voted {
+  color: var(--blue);
+  border-color: var(--blue);
+}
+
 /* Les options de l'hôte. */
 .options {
   padding: 8px 12px;
@@ -418,6 +423,37 @@ textarea.input {
   height: 22px;
   /* La couleur du thème, pas celle du système. */
   accent-color: var(--blue);
+}
+
+/* La ligne d'explication sous l'option : ce que veut dire la case (§4.5). */
+.options__hint {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.3;
+}
+
+/* Le compteur de tours : deux boutons rouges autour du nombre (§3 LOBBY). */
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stepper__value {
+  min-width: 2.2rem;
+  text-align: center;
+  font-size: 1.15rem;
+}
+
+/* Les petits boutons « − » et « + » : du stylo rouge. */
+.btn--step {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 4px 12px;
+  color: var(--red);
+  border-color: var(--red);
+  font-size: 1.35rem;
+  line-height: 1;
 }
 
 /* Les offres de reprise, sur l'accueil : au-dessus du reste. */

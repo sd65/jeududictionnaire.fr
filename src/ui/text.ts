@@ -94,8 +94,15 @@ export const LABELS = {
 
   /* Le salon (§3 LOBBY) */
   table: 'La table',
-  vocal: 'Mode vocal seul',
+  /** L'option d'affichage des définitions pendant le vote (§4.5). */
+  showDefinitions: 'Afficher à tous les définitions pendant le vote',
+  /** Ce que vaut l'option ci-dessus quand elle est décochée (§4.5). */
+  showDefinitionsHint:
+    'Décoché : on ne voit que des numéros, et l’on vote dès la dictée.',
   tours: 'Nombre de tours',
+  /** Les deux boutons qui règlent le nombre de tours (§3 LOBBY). */
+  toursLess: 'Un tour de moins',
+  toursMore: 'Un tour de plus',
   players: 'Joueurs',
   hostBadge: 'hôte',
   you: 'toi',
@@ -140,6 +147,13 @@ export const LABELS = {
   voteFor: 'Je crois que c’est la n°',
   voted: 'Vote enregistré.',
   real: 'vraie',
+  /**
+   * La liste des votants, pour le Chooser (§3 VOTE) : qui a voté, et qui
+   * n'a pas encore voté. **Qui**, jamais quoi (§4.2).
+   */
+  votersCount: (done: number, total: number) => `${done} / ${total} ont voté.`,
+  votedBadge: 'a voté',
+  pendingBadge: 'n’a pas voté',
 
   /* La révélation et la fin (§5) */
   revealTitle: 'La révélation',

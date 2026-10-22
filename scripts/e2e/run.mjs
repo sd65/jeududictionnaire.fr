@@ -35,7 +35,7 @@ const FINISHED_GAME = {
   chooser: null,
   round: 6,
   tours: 2,
-  vocal: true,
+  showDefinitions: false,
   word: '',
   category: '',
   realDef: '',

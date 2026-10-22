@@ -24,7 +24,7 @@ function started(players: string[] = PLAYERS): State {
 /** La partie lancée en mode normal (textes visibles au VOTE). */
 function startedNormal(players: string[] = PLAYERS): State {
   let state = lobby(players);
-  state = reduce(state, { k: 'setOptions', by: players[0]!, vocal: false, tours: 2 });
+  state = reduce(state, { k: 'setOptions', by: players[0]!, showDefinitions: true, tours: 2 });
   return reduce(state, { k: 'start', by: players[0]! });
 }
 
@@ -120,24 +120,24 @@ describe('LOBBY', () => {
   });
 
   it('laisse l’hôte changer les options au LOBBY seulement', () => {
-    let state = reduce(lobby(), { k: 'setOptions', by: 'Alice', vocal: false, tours: 3 });
-    expect(state.vocal).toBe(false);
+    let state = reduce(lobby(), { k: 'setOptions', by: 'Alice', showDefinitions: true, tours: 3 });
+    expect(state.showDefinitions).toBe(true);
     expect(state.tours).toBe(3);
 
     state = reduce(state, { k: 'start', by: 'Alice' });
-    const after = reduce(state, { k: 'setOptions', by: 'Alice', vocal: true, tours: 5 });
-    expect(after.vocal).toBe(false);
+    const after = reduce(state, { k: 'setOptions', by: 'Alice', showDefinitions: false, tours: 5 });
+    expect(after.showDefinitions).toBe(true);
     expect(after.tours).toBe(3);
   });
 
   it('ne descend jamais sous un tour', () => {
-    const state = reduce(lobby(), { k: 'setOptions', by: 'Alice', vocal: true, tours: 0 });
+    const state = reduce(lobby(), { k: 'setOptions', by: 'Alice', showDefinitions: false, tours: 0 });
     expect(state.tours).toBe(1);
   });
 
   it('ne laisse que l’hôte changer les options', () => {
-    const state = reduce(lobby(), { k: 'setOptions', by: 'Bob', vocal: false, tours: 5 });
-    expect(state.vocal).toBe(true);
+    const state = reduce(lobby(), { k: 'setOptions', by: 'Bob', showDefinitions: true, tours: 5 });
+    expect(state.showDefinitions).toBe(false);
     expect(state.tours).toBe(2);
   });
 });

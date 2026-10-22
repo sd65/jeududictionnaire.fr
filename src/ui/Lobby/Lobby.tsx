@@ -12,6 +12,10 @@ export function Lobby({ view, dispatch, onClearHistory }: ScreenProps) {
   const host = view.seats[0] ?? '';
   const absence = absenceReason(view);
 
+  /** L'hôte change le nombre de tours (§3 LOBBY) : un tour de moins, un de plus. */
+  const setTours = (tours: number) =>
+    dispatch({ k: 'setOptions', by: host, showDefinitions: view.showDefinitions, tours });
+
   return (
     <section className="screen screen--lobby">
       <h2>{LABELS.table}</h2>
@@ -41,40 +45,55 @@ export function Lobby({ view, dispatch, onClearHistory }: ScreenProps) {
           <label className="options__line">
             <input
               type="checkbox"
-              checked={view.vocal}
+              checked={view.showDefinitions}
               onChange={(event) =>
                 dispatch({
                   k: 'setOptions',
                   by: host,
-                  vocal: event.target.checked,
+                  showDefinitions: event.target.checked,
                   tours: view.tours,
                 })
               }
             />
-            <span>{LABELS.vocal}</span>
+            <span>{LABELS.showDefinitions}</span>
           </label>
-          <label className="options__line">
+          {/* Ce que veut dire la case,unchecked ou pas (§4.5). */}
+          <p className="muted options__hint">{LABELS.showDefinitionsHint}</p>
+          <div className="options__line">
             <span>{LABELS.tours}</span>
-            <input
-              className="input input--number"
-              type="number"
-              min={1}
-              step={1}
-              value={view.tours}
-              onChange={(event) =>
-                dispatch({
-                  k: 'setOptions',
-                  by: host,
-                  vocal: view.vocal,
-                  tours: Number(event.target.value),
-                })
-              }
-            />
-          </label>
+            {/*
+              Pas de champ à remplir : sur mobile, le nombre est pénible à
+              effacer et les boutons du navigateur sont minuscules. Deux
+              boutons — un de moins, un de plus — font le même travail.
+            */}
+            <div className="stepper">
+              <button
+                type="button"
+                className="btn btn--step"
+                onClick={() => setTours(view.tours - 1)}
+                disabled={view.tours <= 1}
+                aria-label={LABELS.toursLess}
+              >
+                −
+              </button>
+              <span className="stepper__value" aria-live="polite">
+                {view.tours}
+              </span>
+              <button
+                type="button"
+                className="btn btn--step"
+                onClick={() => setTours(view.tours + 1)}
+                aria-label={LABELS.toursMore}
+              >
+                +
+              </button>
+            </div>
+          </div>
         </div>
       ) : (
         <p className="muted">
-          {LABELS.vocal} : {view.vocal ? 'oui' : 'non'} · {LABELS.tours} : {view.tours}
+          {LABELS.showDefinitions} : {view.showDefinitions ? 'oui' : 'non'} · {LABELS.tours} :{' '}
+          {view.tours}
         </p>
       )}
 

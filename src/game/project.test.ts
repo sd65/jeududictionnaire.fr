@@ -136,6 +136,41 @@ describe('la projection selon la phase', () => {
     expect(view.votes).toEqual([]);
   });
 
+  it('au VOTE, le Chooser voit qui a voté, et qui n’a pas encore voté', () => {
+    const state = build('VOTE');
+    expect(project(state, HOST).voterSeats).toEqual([
+      { seat: 'Bob', voted: false },
+      { seat: 'Chloé', voted: false },
+    ]);
+
+    const voted = project(build('VOTE_VOTED'), HOST);
+    expect(voted.voterSeats).toEqual([
+      { seat: 'Bob', voted: true },
+      { seat: 'Chloé', voted: true },
+    ]);
+  });
+
+  it('la liste des votants est réservée au Chooser', () => {
+    const state = build('VOTE_VOTED');
+    expect(project(state, 'Bob').voterSeats).toEqual([]);
+    expect(project(state, 'Chloé').voterSeats).toEqual([]);
+  });
+
+  it('en DICTATE, le Chooser voit la liste quand les définitions ne sont pas affichées', () => {
+    // Les votes tombent pendant la dictée quand les définitions ne sont pas
+    // affichées : le Chooser doit savoir qui attend encore (§3 VOTE).
+    expect(project(build('DICTATE'), HOST).voterSeats).toHaveLength(2);
+    // Sinon, le bulletin n'est pas visible : personne ne vote encore.
+    expect(project(build('DICTATE', false), HOST).voterSeats).toEqual([]);
+  });
+
+  it('la liste des votants ne fuit pas le contenu des votes', () => {
+    // Elle dit qui a voté, jamais sur quoi (§3 VOTE).
+    const view = project(build('VOTE_VOTED'), HOST);
+    expect(view.voterSeats.every((voter) => voter.voted)).toBe(true);
+    expect(view.votes).toEqual([]);
+  });
+
   it('au RÉVÉL, tout le monde voit les textes, les auteurs et les votes', () => {
     const view = project(build('REVEAL'), 'Bob');
     expect(view.options).toHaveLength(3);
@@ -168,7 +203,7 @@ describe('la règle unique de vote', () => {
         const state = build(stop, vocal);
         for (const writer of WRITERS) {
           const expected =
-            state.phase === 'VOTE' || (state.phase === 'DICTATE' && state.vocal);
+            state.phase === 'VOTE' || (state.phase === 'DICTATE' && !state.showDefinitions);
           expect(project(state, writer).canVote).toBe(expected);
         }
       }

@@ -120,7 +120,7 @@ describe('une partie complète, entre trois appareils', () => {
 
   it('démarre, joue, et va jusqu’à la fin', () => {
     const t = table();
-    t.host.dispatch({ k: 'setOptions', by: 'Alice', vocal: true, tours: 1 });
+    t.host.dispatch({ k: 'setOptions', by: 'Alice', showDefinitions: false, tours: 1 });
     t.host.dispatch({ k: 'start', by: 'Alice' });
     flush();
     expect(t.host.store.getSnapshot().phase).toBe('PICK');
@@ -138,7 +138,7 @@ describe('une partie complète, entre trois appareils', () => {
 
   it('compte les points du §5', () => {
     const t = table();
-    t.host.dispatch({ k: 'setOptions', by: 'Alice', vocal: true, tours: 1 });
+    t.host.dispatch({ k: 'setOptions', by: 'Alice', showDefinitions: false, tours: 1 });
     t.host.dispatch({ k: 'start', by: 'Alice' });
     flush();
 
@@ -153,7 +153,7 @@ describe('une partie complète, entre trois appareils', () => {
 
   it('refuse un vote pour sa propre fausse, et le dit au siège', () => {
     const t = table();
-    t.host.dispatch({ k: 'setOptions', by: 'Alice', vocal: true, tours: 1 });
+    t.host.dispatch({ k: 'setOptions', by: 'Alice', showDefinitions: false, tours: 1 });
     t.host.dispatch({ k: 'start', by: 'Alice' });
     flush();
 
@@ -184,7 +184,7 @@ describe('une partie complète, entre trois appareils', () => {
     // Deux invités sont arrivés : deux diffusions.
     expect(t.unions()).toBe(2);
 
-    t.host.dispatch({ k: 'setOptions', by: 'Alice', vocal: true, tours: 1 });
+    t.host.dispatch({ k: 'setOptions', by: 'Alice', showDefinitions: false, tours: 1 });
     t.host.dispatch({ k: 'start', by: 'Alice' });
     flush();
     playRound(t, { Bob: 0, Chloé: 1 });
@@ -203,7 +203,7 @@ describe('une partie complète, entre trois appareils', () => {
 
   it('ajoute à l’historique local le mot de chaque manche', () => {
     const t = table();
-    t.host.dispatch({ k: 'setOptions', by: 'Alice', vocal: true, tours: 1 });
+    t.host.dispatch({ k: 'setOptions', by: 'Alice', showDefinitions: false, tours: 1 });
     t.host.dispatch({ k: 'start', by: 'Alice' });
     flush();
     const word = playRound(t);
@@ -215,7 +215,7 @@ describe('une partie complète, entre trois appareils', () => {
 
   it('bloque la partie quand un joueur se déconnecte', () => {
     const t = table();
-    t.host.dispatch({ k: 'setOptions', by: 'Alice', vocal: true, tours: 1 });
+    t.host.dispatch({ k: 'setOptions', by: 'Alice', showDefinitions: false, tours: 1 });
     t.host.dispatch({ k: 'start', by: 'Alice' });
     flush();
 
@@ -243,7 +243,7 @@ describe('une partie complète, entre trois appareils', () => {
 
   it('laisse revenir un joueur et reprendre sa place', () => {
     const t = table();
-    t.host.dispatch({ k: 'setOptions', by: 'Alice', vocal: true, tours: 1 });
+    t.host.dispatch({ k: 'setOptions', by: 'Alice', showDefinitions: false, tours: 1 });
     t.host.dispatch({ k: 'start', by: 'Alice' });
     flush();
 
@@ -317,7 +317,7 @@ describe('le pseudo déjà pris', () => {
 describe('le rechargement de l’hôte', () => {
   it('retrouve la partie, et les invités la reprennent', () => {
     const t = table();
-    t.host.dispatch({ k: 'setOptions', by: 'Alice', vocal: true, tours: 1 });
+    t.host.dispatch({ k: 'setOptions', by: 'Alice', showDefinitions: false, tours: 1 });
     t.host.dispatch({ k: 'start', by: 'Alice' });
     flush();
     playRound(t, { Bob: 0, Chloé: 1 });
@@ -361,7 +361,7 @@ describe('le rechargement de l’hôte', () => {
 describe('l’historique de mots', () => {
   it('efface l’historique local, sans toucher à celui des autres', () => {
     const t = table();
-    t.host.dispatch({ k: 'setOptions', by: 'Alice', vocal: true, tours: 1 });
+    t.host.dispatch({ k: 'setOptions', by: 'Alice', showDefinitions: false, tours: 1 });
     t.host.dispatch({ k: 'start', by: 'Alice' });
     flush();
     const word = playRound(t);

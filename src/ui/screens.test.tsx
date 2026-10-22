@@ -66,7 +66,7 @@ describe('chaque écran', () => {
 describe('le salon', () => {
   it('montre les options à l’hôte', () => {
     const html = renderToString(<Screen {...propsOf(gameFixture('LOBBY'), HOST)} />);
-    expect(html).toContain('Mode vocal seul');
+    expect(html).toContain('Afficher à tous les définitions pendant le vote');
     expect(html).toContain('Nombre de tours');
   });
 
@@ -76,6 +76,19 @@ describe('le salon', () => {
     // Pas de champ à remplir : les options sont celles de l'hôte.
     expect(html).not.toContain('type="number"');
     expect(html).not.toContain('type="checkbox"');
+  });
+
+  it('règle les tours avec deux boutons, et non avec un champ', () => {
+    const html = renderToString(<Screen {...propsOf(gameFixture('LOBBY'), HOST)} />);
+    // Sur mobile, un champ à effacer est pénible : deux boutons suffisent.
+    expect(html).not.toContain('type="number"');
+    expect(html).toContain('Un tour de moins');
+    expect(html).toContain('Un tour de plus');
+  });
+
+  it('explique ce que veut dire l’option des définitions', () => {
+    const html = renderToString(<Screen {...propsOf(gameFixture('LOBBY'), HOST)} />);
+    expect(html).toContain('Décoché : on ne voit que des numéros');
   });
 
   it('signale une partie déjà commencée pour un appareil en retard', () => {
@@ -165,6 +178,36 @@ describe('le bulletin', () => {
   it('ne montre pas la carte de dictation aux autres', () => {
     const html = renderToString(<Screen {...propsOf(gameFixture('DICTATE'), 'Bob')} />);
     expect(html).not.toContain('vraie');
+  });
+});
+
+describe('les votants', () => {
+  it('montre au Chooser qui a voté et qui attend encore', () => {
+    const html = renderToString(<Screen {...propsOf(gameFixture('VOTE'), HOST)} />);
+    expect(html).toContain('0 / 2 ont voté');
+    expect(html).toContain('Bob');
+    expect(html).toContain('n’a pas voté');
+  });
+
+  it('marque les votes déjà exprimés', () => {
+    const html = renderToString(<Screen {...propsOf(gameFixture('VOTE_VOTED'), HOST)} />);
+    expect(html).toContain('2 / 2 ont voté');
+    expect(html).toContain('a voté');
+  });
+
+  it('ne montre la liste à personne d’autre', () => {
+    const html = renderToString(<Screen {...propsOf(gameFixture('VOTE_VOTED'), 'Bob')} />);
+    expect(html).not.toContain('ont voté');
+  });
+
+  it('la montre pendant la dictée, quand les définitions ne sont pas affichées', () => {
+    const html = renderToString(<Screen {...propsOf(gameFixture('DICTATE'), HOST)} />);
+    expect(html).toContain('ont voté');
+  });
+
+  it('ne la montre pas pendant la dictée, quand elles sont affichées', () => {
+    const html = renderToString(<Screen {...propsOf(gameFixture('DICTATE', false), HOST)} />);
+    expect(html).not.toContain('ont voté');
   });
 });
 

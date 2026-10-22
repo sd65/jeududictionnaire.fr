@@ -29,7 +29,9 @@ export type FixtureStop =
 export function gameFixture(stopAt: FixtureStop, vocal = true): State {
   let state = initialState();
   for (const name of PLAYERS) state = reduce(state, { k: 'hello', name });
-  state = reduce(state, { k: 'setOptions', by: HOST, vocal, tours: 2 });
+  // `vocal` : les définitions ne sont pas affichées, le vote ouvre à la
+  // dictée. L'état porte l'inverse (§4.5).
+  state = reduce(state, { k: 'setOptions', by: HOST, showDefinitions: !vocal, tours: 2 });
   if (stopAt === 'LOBBY') return state;
 
   state = reduce(state, { k: 'start', by: HOST });

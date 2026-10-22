@@ -33,7 +33,7 @@ describe('l’état initial', () => {
 
   it('est en mode vocal, avec deux tours', () => {
     const state = initialState();
-    expect(state.vocal).toBe(true);
+    expect(state.showDefinitions).toBe(false);
     expect(state.tours).toBe(2);
   });
 });

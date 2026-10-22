@@ -39,11 +39,11 @@ export type View = {
   /**
    * Le vote est accepté exactement quand le bulletin est visible à ce
    * joueur (§3 VOTE). La formule est celle du plan :
-   * `phase === 'VOTE' || (phase === 'DICTATE' && vocal)`. Le Chooser et un
+   * `phase === 'VOTE' || (phase === 'DICTATE' && !showDefinitions)`. Le Chooser et un
    * appareil non assis ne votent pas, même si le bulletin est visible.
    */
   canVote: boolean;
-  /** Les textes du bulletin sont affichables (mode normal, phase VOTE). */
+  /** Les textes du bulletin sont affichables (définitions affichées, phase VOTE). */
   showTexts: boolean;
   /** Le nombre d'options du bulletin (1…N). */
   optionsCount: number;
@@ -74,6 +74,14 @@ export type View = {
   drafts: { author: string; text: string }[];
   /** Le nombre de votes exprimés (agrégat, jamais le détail). */
   voters: number;
+  /**
+   * Les votants et leur état — pour le **Chooser** seul (§3 VOTE).
+   *
+   * **Qui** a voté, jamais **quoi** : le contenu des votes reste caché
+   * jusqu'à la révélation (§3 VOTE). La liste est vide pour tout le monde
+   * d'autre, et vide aussi quand le bulletin n'est pas visible.
+   */
+  voterSeats: { seat: string; voted: boolean }[];
   /** Le nombre de votes par option — au Révél seulement. */
   votes: number[];
   /** Les points de la manche — au Révél seulement. */
@@ -93,7 +101,14 @@ export type View = {
   round: number;
   totalRounds: number;
   tours: number;
-  vocal: boolean;
+  /**
+   * Les définitions sont-elles affichées aux joueurs pendant le vote (§4.5) ?
+   *
+   * `false` — le défaut — : les téléphones ne montrent que des numéros, et le
+   * vote est ouvert dès la dictée. `true` : les définitions s'affichent au
+   * VOTE, et le vote n'ouvre qu'à ce moment-là.
+   */
+  showDefinitions: boolean;
   /** Les joueurs attendus comme rédacteurs (le Chooser exclu). */
   expectedWriters: string[];
 };
@@ -108,10 +123,10 @@ export function project(state: State, me: string | null): View {
   const isSeated = mySeat !== null;
   const isHost = mySeat !== null && host !== null && samePseudo(mySeat, host);
   const isChooser = mySeat !== null && state.chooser !== null && samePseudo(mySeat, state.chooser);
-  const vocal = state.vocal;
+  const showDefinitions = state.showDefinitions;
 
-  // Le bulletin est visible : la règle unique de vote, dans les deux modes.
-  const ballotVisible = phase === 'VOTE' || (phase === 'DICTATE' && vocal);
+  // Le bulletin est visible : la règle unique de vote, dans les deux réglages.
+  const ballotVisible = phase === 'VOTE' || (phase === 'DICTATE' && !showDefinitions);
   const canVote = ballotVisible && isSeated && !isChooser;
 
   // La carte de dictation du Chooser : l'ordre numéroté et le badge « vraie ».
@@ -119,18 +134,18 @@ export function project(state: State, me: string | null): View {
   const dictationCard = isChooser && (phase === 'DICTATE' || phase === 'VOTE');
 
   const showWord = phase === 'DRAFT' || phase === 'REVEAL';
-  const showTexts = phase === 'VOTE' && !vocal;
+  const showTexts = phase === 'VOTE' && showDefinitions;
   const showAuthors = phase === 'REVEAL';
   const showSubmitted = phase === 'DRAFT';
-  const showVoters = (phase === 'DICTATE' && vocal) || phase === 'VOTE';
+  const showVoters = (phase === 'DICTATE' && !showDefinitions) || phase === 'VOTE';
   const showVotes = phase === 'REVEAL';
   const showScores = phase === 'REVEAL' || phase === 'END';
 
-  // Les numéros 1…N : en mode vocal dès DICTATE, en mode normal au VOTE,
-  // plus la carte de dictation du Chooser (§4.2).
+  // Les numéros 1…N : dès DICTATE quand les définitions ne sont pas affichées,
+  // au VOTE sinon, plus la carte de dictation du Chooser (§4.2).
   const showNumbers = ballotVisible || phase === 'REVEAL' || dictationCard;
-  // Les textes : en mode normal au VOTE, au Révél, et sur la carte de
-  // dictation du Chooser — qui doit lire les définitions à voix haute.
+  // Les textes : au VOTE quand les définitions sont affichées, au Révél, et sur
+  // la carte de dictation du Chooser — qui doit lire les définitions à voix haute.
   const showOptions = showTexts || phase === 'REVEAL' || dictationCard;
 
   const optionText = (author: Author): string =>
@@ -148,6 +163,14 @@ export function project(state: State, me: string | null): View {
   const drafts = showDrafts
     ? submitted.map((author) => ({ author, text: state.fakes[author] ?? '' }))
     : [];
+  // Les votants : pour le Chooser seul, et seulement quand le bulletin est
+  // visible — c'est-à-dire quand il y a des votes à voir (§3 VOTE). Quand les
+  // définitions ne sont pas affichées, les votes tombent pendant la dictée :
+  // le Chooser en a besoin pour savoir qui attend encore.
+  const voterSeats =
+    isChooser && ballotVisible
+      ? expectedWriters(state).map((seat) => ({ seat, voted: seat in state.votes }))
+      : [];
   const points = roundPoints(state.ballot, state.votes);
   const standing = rank(state.scores, seats);
 
@@ -174,6 +197,7 @@ export function project(state: State, me: string | null): View {
       submitted: [],
       drafts: [],
       voters: 0,
+      voterSeats: [],
       votes: [],
       roundPoints: {},
       scores: {},
@@ -185,7 +209,7 @@ export function project(state: State, me: string | null): View {
       round: state.round,
       totalRounds: totalRounds(state),
       tours: state.tours,
-      vocal,
+      showDefinitions,
       expectedWriters: [],
     };
   }
@@ -212,6 +236,7 @@ export function project(state: State, me: string | null): View {
     submitted: showSubmitted ? submitted : [],
     drafts,
     voters: showVoters ? Object.keys(state.votes).length : 0,
+    voterSeats,
     votes: showVotes ? voteCounts : [],
     roundPoints: showVotes ? points : {},
     scores: showScores ? { ...state.scores } : {},
@@ -223,7 +248,7 @@ export function project(state: State, me: string | null): View {
     round: state.round,
     totalRounds: totalRounds(state),
     tours: state.tours,
-    vocal,
+    showDefinitions,
     expectedWriters: expectedWriters(state),
   };
 }
