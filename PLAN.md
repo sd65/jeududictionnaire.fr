@@ -608,7 +608,8 @@ Notes:
   can therefore travel as a single message; no chunking code is needed.
 
 ### 6.6 Front-end architecture (decided)
-- **Stack:** React + TypeScript + JSX, built with Vite. Base URL is `/`; a custom domain is planned for phase 2.
+- **Stack:** React + TypeScript + JSX, built with Vite. Base URL is `/`; the custom domain is
+  `jeududictionnaire.fr`, served over HTTPS (§6.1, §12.14).
 - **Authority:** only the host runs `reduce()`. Guests never compute game state: they send
   intents (§6.5) and draw the last state they received.
 - **One state, one projection.** The state `S` is a plain JSON object; `project(S, me)` (§4.2)
